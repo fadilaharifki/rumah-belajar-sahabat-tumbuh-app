@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { INITIAL_TEACHERS } from '@/utils/seedData';
 import { Teacher } from '@/hooks/useMasterData';
 import { ALL_CRUD_PERMISSIONS } from './useRoleStore';
 
@@ -16,35 +15,40 @@ export interface UserProfile {
 }
 
 export interface AuthState {
-  user: UserProfile;
-  activeRole: 'admin' | 'teacher' | 'parent' | 'staff';
-  activeTeacher: Teacher;
+  user: UserProfile | null;
+  activeRole: 'admin' | 'teacher' | 'parent' | 'staff' | null;
+  activeTeacher: Teacher | null;
   userPermissions: string[];
   setRole: (role: 'admin' | 'teacher' | 'parent' | 'staff') => void;
-  setActiveTeacher: (teacher: Teacher) => void;
-  setAuthUser: (user: UserProfile) => void;
+  setActiveTeacher: (teacher: Teacher | null) => void;
+  setAuthUser: (user: UserProfile | null) => void;
   setUserPermissions: (permissions: string[]) => void;
+  logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      user: {
-        id: "admin-1",
-        full_name: "Ibu Nurul (Pemilik / Admin)",
-        email: "pemilik@sahabattumbuh.id",
-        role: "admin",
-        role_id: "11111111-1111-1111-1111-000000000001",
-        avatar_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80"
-      },
-      activeRole: "admin",
-      activeTeacher: INITIAL_TEACHERS[0] as Teacher,
-      userPermissions: ALL_CRUD_PERMISSIONS.map((p) => p.key),
+      user: null,
+      activeRole: null,
+      activeTeacher: null,
+      userPermissions: [],
 
       setRole: (role) => set({ activeRole: role }),
       setActiveTeacher: (teacher) => set({ activeTeacher: teacher }),
-      setAuthUser: (user) => set({ user, activeRole: user.role }),
-      setUserPermissions: (permissions) => set({ userPermissions: permissions })
+      setAuthUser: (user) => {
+        if (!user || user.id === 'guest') {
+          set({ user: null, activeRole: null, activeTeacher: null, userPermissions: [] });
+        } else {
+          set({
+            user,
+            activeRole: user.role,
+            userPermissions: ALL_CRUD_PERMISSIONS.map((p) => p.key)
+          });
+        }
+      },
+      setUserPermissions: (permissions) => set({ userPermissions: permissions }),
+      logout: () => set({ user: null, activeRole: null, activeTeacher: null, userPermissions: [] })
     }),
     {
       name: 'sahabat_tumbuh_auth_session', // unique key in browser localStorage

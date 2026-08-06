@@ -30,7 +30,8 @@ export const UserProfileDropdown: React.FC = () => {
     router.push('/login');
   };
 
-  const getRoleLabel = (role: string) => {
+  const getRoleLabel = (role: string | null) => {
+    if (!role) return 'Pengguna';
     switch (role) {
       case 'admin':
         return 'Admin / Pemilik';

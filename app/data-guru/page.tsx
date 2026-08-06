@@ -41,7 +41,7 @@ export default function DataGuruPage() {
 
   // Role-Based Auto Redirect for Teacher to their own profile page
   useEffect(() => {
-    if (user.role === 'teacher' && user.teacher_id) {
+    if (user?.role === 'teacher' && user?.teacher_id) {
       router.push(`/data-guru/${user.teacher_id}`);
     }
   }, [user, router]);

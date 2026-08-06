@@ -63,12 +63,14 @@ export default function PengaturanPage() {
         throw new Error(json.error || 'Gagal memperbarui profil');
       }
 
-      setAuthUser({
-        ...user,
-        full_name: fullName,
-        email,
-        avatar_url: avatarUrl
-      });
+      if (user) {
+        setAuthUser({
+          ...user,
+          full_name: fullName,
+          email,
+          avatar_url: avatarUrl
+        });
+      }
 
       toast.success(json.message || 'Data profil berhasil diperbarui!');
       setActiveForm('none');
@@ -164,7 +166,7 @@ export default function PengaturanPage() {
               <p className="text-xs text-slate-500 font-mono">{email}</p>
               <div className="pt-1.5 flex justify-center">
                 <Badge variant="emerald" size="sm" className="font-extrabold uppercase text-[10px]">
-                  {activeRole.toUpperCase()}
+                  {(activeRole || '').toUpperCase()}
                 </Badge>
               </div>
             </div>
@@ -229,7 +231,7 @@ export default function PengaturanPage() {
                 </div>
               </div>
               <Badge variant="amber" size="sm" className="font-bold text-[10px]">
-                {activeRole.toUpperCase()}
+                {(activeRole || '').toUpperCase()}
               </Badge>
             </div>
 

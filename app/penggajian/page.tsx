@@ -82,7 +82,7 @@ export default function PenggajianPage() {
 
   const isLoading = isLoadingGuru || isLoadingPresensi;
 
-  if (user.role === 'parent') {
+  if (user?.role === 'parent') {
     return (
       <div className="max-w-md mx-auto py-16 text-center space-y-4">
         <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">

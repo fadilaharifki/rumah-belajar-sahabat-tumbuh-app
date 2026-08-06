@@ -100,7 +100,7 @@ export default function DataSiswaPage() {
 
   // Role-Based Data Scoping Filter for Desktop
   const students = useMemo(() => {
-    if (user.role === 'parent' && user.parent_id) {
+    if (user?.role === 'parent' && user?.parent_id) {
       return allStudents.filter((st) => st.parent_id === user.parent_id);
     }
     return allStudents;
@@ -112,7 +112,7 @@ export default function DataSiswaPage() {
     const allInfinite = infiniteData.pages.flatMap((page) => page.items);
 
     let filtered = allInfinite;
-    if (user.role === 'parent' && user.parent_id) {
+    if (user?.role === 'parent' && user?.parent_id) {
       filtered = allInfinite.filter((st) => st.parent_id === user.parent_id);
     }
 
@@ -326,10 +326,10 @@ export default function DataSiswaPage() {
           </div>
           <div>
             <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-              {user.role === 'parent' ? 'Data Putra / Putri Saya' : 'Data Siswa & Anak Bimbingan'}
+              {user?.role === 'parent' ? 'Data Putra / Putri Saya' : 'Data Siswa & Anak Bimbingan'}
             </h1>
             <p className="text-xs text-slate-500 font-medium hidden md:block">
-              {user.role === 'parent'
+              {user?.role === 'parent'
                 ? 'Daftar putra/putri Anda yang terdaftar bimbingan belajar.'
                 : 'Daftar murid, jenjang kelas, dan tautan wali siswa.'}
             </p>

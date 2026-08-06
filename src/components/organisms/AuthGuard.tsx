@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { ArrowLeft, Lock } from 'lucide-react';
+import { ArrowLeft, Lock, Sprout } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useAbility, CRUDAction, Resource } from '@/hooks/useAbility';
 import { Button } from '../atoms/Button';
@@ -30,26 +30,61 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const router = useRouter();
   const { user } = useAuthStore();
   const { can } = useAbility();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  // Wait for client hydration & localStorage restoration
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  const isAuthenticated = Boolean(user && user.id && user.id !== 'guest');
 
   const reqPerm = Object.keys(ROUTE_PERMISSIONS).find(
     (route) => pathname === route || (route !== '/' && pathname.startsWith(route))
   );
 
-  const isAllowed = reqPerm ? can(ROUTE_PERMISSIONS[reqPerm].action, ROUTE_PERMISSIONS[reqPerm].resource) : true;
-  const isUnauthenticated = user?.id === 'guest';
+  const isAllowed = isAuthenticated
+    ? (reqPerm ? can(ROUTE_PERMISSIONS[reqPerm].action, ROUTE_PERMISSIONS[reqPerm].resource) : true)
+    : false;
 
   useEffect(() => {
-    if (pathname !== '/login' && isUnauthenticated) {
-      router.push('/login');
+    if (hasMounted) {
+      if (!isAuthenticated && pathname !== '/login') {
+        router.replace('/login');
+      } else if (isAuthenticated && pathname === '/login') {
+        router.replace('/');
+      }
     }
-  }, [pathname, isUnauthenticated, router]);
+  }, [hasMounted, isAuthenticated, pathname, router]);
+
+  // Loading Splash Screen during hydration check
+  if (!hasMounted) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-amber-300 flex items-center justify-center shadow-lg animate-pulse mb-3">
+          <Sprout className="w-7 h-7" />
+        </div>
+        <p className="text-xs font-semibold text-slate-500 font-mono">Memeriksa Sesi Login...</p>
+      </div>
+    );
+  }
 
   if (pathname === '/login') {
+    if (isAuthenticated) {
+      return null;
+    }
     return <>{children}</>;
   }
 
-  if (isUnauthenticated) {
-    return null;
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-amber-300 flex items-center justify-center shadow-lg animate-pulse mb-3">
+          <Sprout className="w-7 h-7" />
+        </div>
+        <p className="text-xs font-semibold text-slate-500 font-mono">Mengarahkan ke Halaman Login...</p>
+      </div>
+    );
   }
 
   if (!isAllowed) {

@@ -53,12 +53,7 @@ export const useLogoutMutation = () => {
       return res.json();
     },
     onSuccess: () => {
-      setAuthUser({
-        id: 'guest',
-        full_name: 'Tamu / Belum Login',
-        email: '',
-        role: 'parent'
-      });
+      setAuthUser(null);
       toast.info('Anda telah keluar dari aplikasi.');
       router.push('/login');
     }

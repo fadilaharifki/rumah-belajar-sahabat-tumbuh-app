@@ -165,7 +165,7 @@ export default function DetailSiswaPage() {
     );
   }
 
-  const canAddResult = user.role === 'admin' || user.role === 'staff' || user.role === 'teacher';
+  const canAddResult = user?.role === 'admin' || user?.role === 'staff' || user?.role === 'teacher';
 
   return (
     <div className="space-y-3.5 max-w-5xl mx-auto px-1 sm:px-0">
