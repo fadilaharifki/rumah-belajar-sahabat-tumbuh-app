@@ -18,7 +18,9 @@ export const useAuth = () => {
 
     const syncUserRoleAndPermissions = async () => {
       try {
-        const currentEmail = user?.email || '';
+        const currentEmail = user?.email;
+        if (!currentEmail) return;
+
         const res = await fetch(`/api/auth/me?email=${encodeURIComponent(currentEmail)}`);
 
         // Automatic Redirect to Login on 401 Unauthorized Session Expired

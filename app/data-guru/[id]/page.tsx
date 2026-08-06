@@ -204,7 +204,7 @@ export default function DetailGuruPage() {
     );
   }
 
-  const isAdminOrStaff = user.role === 'admin' || user.role === 'staff';
+  const isAdminOrStaff = user?.role === 'admin' || user?.role === 'staff';
 
   return (
     <div className="space-y-6">

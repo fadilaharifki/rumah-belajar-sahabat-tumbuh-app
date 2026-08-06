@@ -92,15 +92,16 @@ export default function PresensiPage() {
   const [deleteTarget, setDeleteTarget] = useState<PresensiItem | null>(null);
 
   // Role-Based Data Scoping + Month & Year Filter (Desktop List)
+  // Combined Desktop Presensi Filter
   const presensiList = useMemo(() => {
     return allPresensiList.filter((p) => {
       const matchMonth = p.date.startsWith(selectedMonth);
       if (!matchMonth) return false;
 
-      if (user.role === 'teacher' && user.teacher_id) {
+      if (user?.role === 'teacher' && user?.teacher_id) {
         return p.teacher_id === user.teacher_id;
       }
-      if (user.role === 'parent' && user.parent_id) {
+      if (user?.role === 'parent' && user?.parent_id) {
         const myStudentIds = new Set(students.filter((st: any) => st.parent_id === user.parent_id).map((st) => st.id));
         return myStudentIds.has(p.student_id);
       }
@@ -117,10 +118,10 @@ export default function PresensiPage() {
       const matchMonth = p.date.startsWith(selectedMonth);
       if (!matchMonth) return false;
 
-      if (user.role === 'teacher' && user.teacher_id) {
+      if (user?.role === 'teacher' && user?.teacher_id) {
         return p.teacher_id === user.teacher_id;
       }
-      if (user.role === 'parent' && user.parent_id) {
+      if (user?.role === 'parent' && user?.parent_id) {
         const myStudentIds = new Set(students.filter((st: any) => st.parent_id === user.parent_id).map((st) => st.id));
         return myStudentIds.has(p.student_id);
       }
@@ -144,7 +145,7 @@ export default function PresensiPage() {
 
   const handle1ClickCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    const tId = user.role === 'teacher' && user.teacher_id ? user.teacher_id : (ciTeacherId || teachers[0]?.id);
+    const tId = user?.role === 'teacher' && user?.teacher_id ? user.teacher_id : (ciTeacherId || teachers[0]?.id);
     const sId = ciStudentId || students[0]?.id;
 
     if (!tId || !sId) return;
@@ -218,19 +219,19 @@ export default function PresensiPage() {
             </div>
             <div className="min-w-0">
               <h1 className="text-sm sm:text-lg font-bold text-slate-900 leading-tight truncate">
-                {user.role === 'teacher' ? 'Presensi Sesi Saya' : user.role === 'parent' ? 'Riwayat Presensi Anak Saya' : 'Presensi Sesi Mengajar'}
+                {user?.role === 'teacher' ? 'Presensi Sesi Saya' : user?.role === 'parent' ? 'Riwayat Presensi Anak Saya' : 'Presensi Sesi Mengajar'}
               </h1>
               <p className="text-xs text-slate-500 font-medium hidden sm:block truncate">
-                {user.role === 'teacher'
-                  ? `Riwayat presensi & laporan belajar (${user.full_name}).`
-                  : user.role === 'parent'
+                {user?.role === 'teacher'
+                  ? `Riwayat presensi & laporan belajar (${user?.full_name || ''}).`
+                  : user?.role === 'parent'
                   ? `Bukti kehadiran guru & jurnal belajar putra/putri.`
                   : 'Check-In 1-Klik terpasang dengan Laporan Belajar Siswa.'}
               </p>
             </div>
           </div>
 
-          {user.role !== 'parent' && (
+          {user?.role !== 'parent' && (
             <Button
               variant="primary"
               size="sm"
@@ -300,15 +301,15 @@ export default function PresensiPage() {
 
       {/* 1. REUSABLE MODAL / BOTTOM SHEET: CHECK-IN SESI MENGAJAR */}
       <Modal
-        isOpen={isCheckInOpen && user.role !== 'parent'}
+        isOpen={isCheckInOpen && user?.role !== 'parent'}
         onClose={() => setIsCheckInOpen(false)}
         title="Check-In Sesi Mengajar"
         icon={CheckCircle2}
         maxWidth="md"
       >
         <form onSubmit={handle1ClickCheckIn} className="space-y-4">
-          <div className={`grid grid-cols-1 ${user.role !== 'teacher' ? 'sm:grid-cols-2' : ''} gap-3`}>
-            {user.role !== 'teacher' && (
+          <div className={`grid grid-cols-1 ${user?.role !== 'teacher' ? 'sm:grid-cols-2' : ''} gap-3`}>
+            {user?.role !== 'teacher' && (
               <div>
                 <Label required className="text-xs font-bold text-slate-700 mb-1">Pilih Guru Pengajar:</Label>
                 <Select

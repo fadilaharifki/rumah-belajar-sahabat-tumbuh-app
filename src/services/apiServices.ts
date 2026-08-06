@@ -24,10 +24,13 @@ export const apiService = {
 
     try {
       const { data, error } = await supabase.from('teachers').select('*').order('name');
-      if (error || !data || data.length === 0) return INITIAL_TEACHERS;
-      return data as Teacher[];
+      if (error) {
+        console.warn('Supabase getTeachers error:', error.message);
+        return [];
+      }
+      return (data || []) as Teacher[];
     } catch {
-      return INITIAL_TEACHERS;
+      return [];
     }
   },
 
@@ -81,9 +84,12 @@ export const apiService = {
         .select('*, parents(name, phone)')
         .order('name');
 
-      if (error || !data || data.length === 0) return INITIAL_STUDENTS;
+      if (error) {
+        console.warn('Supabase getStudents error:', error.message);
+        return [];
+      }
 
-      return data.map((s: any) => ({
+      return (data || []).map((s: any) => ({
         id: s.id,
         name: s.name,
         nickname: s.nickname,
@@ -94,7 +100,7 @@ export const apiService = {
         photo_url: s.photo_url
       })) as Student[];
     } catch {
-      return INITIAL_STUDENTS;
+      return [];
     }
   },
 
