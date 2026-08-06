@@ -53,8 +53,8 @@ export const FaceVerificationModal: React.FC<FaceVerificationModalProps> = ({
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-emerald-600" />
             <div>
-              <h3 className="text-base font-bold text-slate-900">Presensi Kamera Wajah AI</h3>
-              <p className="text-xs text-slate-500">Pencocokan fitur selfie presensi pengajar real-time</p>
+              <h3 className="text-base font-bold text-slate-900">Presensi Foto Kamera</h3>
+              <p className="text-xs text-slate-500">Fitur selfie presensi pengajar real-time</p>
             </div>
           </div>
           <button onClick={handleClose} className="p-1.5 rounded-full hover:bg-slate-100">

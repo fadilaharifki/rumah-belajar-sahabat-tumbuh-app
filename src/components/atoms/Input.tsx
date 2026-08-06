@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, X } from 'lucide-react';
 
 export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   error?: boolean;
   icon?: React.ComponentType<{ className?: string }>;
   isCurrency?: boolean;
   currencyPrefix?: string;
+  isClearable?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
@@ -18,6 +19,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   icon: Icon,
   isCurrency = false,
   currencyPrefix = 'Rp ',
+  isClearable = true,
   value,
   onChange,
   onKeyDown,
@@ -84,6 +86,20 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
     }
   };
 
+  const handleClearInput = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (onChange) {
+      const syntheticEvent = {
+        target: {
+          name: props.name,
+          value: ''
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      onChange(syntheticEvent);
+    }
+  };
+
   const displayValue = isCurrencyType
     ? formatCurrency(value)
     : value;
@@ -91,6 +107,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   const actualType = isPasswordType
     ? (showPassword ? 'text' : 'password')
     : (isCurrencyType || isNumberType ? 'text' : type);
+
+  const hasValue = value !== undefined && value !== null && String(value).length > 0;
+  const showClearButton = isClearable && hasValue && !props.disabled && !props.readOnly && !isPasswordType;
 
   return (
     <div className="relative w-full">
@@ -112,13 +131,24 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
             'w-full h-9 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs text-slate-900 shadow-2xs placeholder:text-slate-400 transition duration-150 ease-in-out focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20',
             (isCurrencyType || isNumberType) && 'font-mono font-semibold',
             Icon && 'pl-10',
-            isPasswordType && 'pr-10',
+            (isPasswordType || showClearButton) && 'pr-9',
             error && 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20',
             className
           )
         )}
         {...props}
       />
+
+      {showClearButton && (
+        <button
+          type="button"
+          onClick={handleClearInput}
+          className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-rose-600 transition cursor-pointer"
+          title="Bersihkan teks"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      )}
 
       {isPasswordType && (
         <button

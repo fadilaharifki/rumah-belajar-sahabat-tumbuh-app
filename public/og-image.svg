@@ -1,0 +1,15 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='630' viewBox='0 0 1200 630'>
+  <defs>
+    <linearGradient id='bg' x1='0%' y1='0%' x2='100%' y2='100%'>
+      <stop offset='0%' stop-color='#059669'/>
+      <stop offset='50%' stop-color='#047857'/>
+      <stop offset='100%' stop-color='#064e3b'/>
+    </linearGradient>
+  </defs>
+  <rect width='1200' height='630' fill='url(#bg)'/>
+  <circle cx='1100' cy='50' r='250' fill='#F59E0B' opacity='0.15'/>
+  <rect x='300' y='120' width='600' height='60' rx='30' fill='white' fill-opacity='0.18' stroke='#FBBF24' stroke-width='2'/>
+  <text x='600' y='160' font-family='sans-serif' font-size='24' font-weight='bold' fill='#FDE68A' text-anchor='middle'>🌱 RUMAH BELAJAR SAHABAT TUMBUH</text>
+  <text x='600' y='300' font-family='sans-serif' font-size='52' font-weight='bold' fill='white' text-anchor='middle'>Sistem Bimbingan &amp; Pendampingan Belajar</text>
+  <text x='600' y='400' font-family='sans-serif' font-size='24' fill='#A7F3D0' text-anchor='middle'>Presensi Kamera • Jadwal Bimbingan • Jurnal Progress Siswa • Rekap Penggajian</text>
+</svg>

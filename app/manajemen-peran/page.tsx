@@ -37,10 +37,10 @@ export const PERMISSION_GROUPS = [
     ]
   },
   {
-    name: 'Presensi & Check-In AI',
+    name: 'Presensi & Check-In',
     items: [
       { key: 'presensi:read', label: 'Melihat Lembar Presensi (Read)' },
-      { key: 'presensi:create', label: 'Check-In Presensi AI (Create)' },
+      { key: 'presensi:create', label: 'Check-In Presensi (Create)' },
       { key: 'presensi:update', label: 'Mengedit Status Presensi (Update)' },
       { key: 'presensi:delete', label: 'Menghapus Data Presensi (Delete)' }
     ]

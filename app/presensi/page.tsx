@@ -26,6 +26,7 @@ import { Label } from '@/components/atoms/Label';
 import { Input } from '@/components/atoms/Input';
 import { Select } from '@/components/atoms/Select';
 import { DatePicker } from '@/components/atoms/DatePicker';
+import { TimePicker } from '@/components/atoms/TimePicker';
 import { Modal } from '@/components/atoms/Modal';
 import { Skeleton, SkeletonTable } from '@/components/atoms/Skeleton';
 import { format } from 'date-fns';
@@ -78,6 +79,7 @@ export default function PresensiPage() {
   // Form State for 1-Click Check-In
   const [ciTeacherId, setCiTeacherId] = useState('');
   const [ciStudentId, setCiStudentId] = useState('');
+  const [ciCheckInTime, setCiCheckInTime] = useState(() => new Date().toTimeString().slice(0, 5));
 
   // Modal State for Session Log Submission
   const [logTargetPresensi, setLogTargetPresensi] = useState<PresensiItem | null>(null);
@@ -135,6 +137,11 @@ export default function PresensiPage() {
     return mobilePresensiList.filter((p) => p.status === 'CheckIn' || !p.session_log);
   }, [mobilePresensiList]);
 
+  const handleOpenCheckInModal = () => {
+    setCiCheckInTime(new Date().toTimeString().slice(0, 5));
+    setIsCheckInOpen(true);
+  };
+
   const handle1ClickCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
     const tId = user.role === 'teacher' && user.teacher_id ? user.teacher_id : (ciTeacherId || teachers[0]?.id);
@@ -144,7 +151,8 @@ export default function PresensiPage() {
 
     await checkInMutation.mutateAsync({
       teacher_id: tId,
-      student_id: sId
+      student_id: sId,
+      check_in: ciCheckInTime || new Date().toTimeString().slice(0, 5)
     });
 
     setCiTeacherId('');
@@ -226,7 +234,7 @@ export default function PresensiPage() {
             <Button
               variant="primary"
               size="sm"
-              onClick={() => setIsCheckInOpen(!isCheckInOpen)}
+              onClick={handleOpenCheckInModal}
               className="shadow-xs text-xs font-bold h-8.5 sm:h-9 px-3 sm:px-4 rounded-xl shrink-0"
             >
               <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-amber-300" /> Check-In
@@ -234,7 +242,7 @@ export default function PresensiPage() {
           )}
         </div>
 
-        {/* Row 2: Filter Tabs (Kiri) + Month Filter (Kanan) */}
+        {/* Row 2: Filter Tabs (Kiri) + Month Filter (Kanan) - Icon Only di Mobile, Full Text di Desktop */}
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
           {/* Tabs Filter (Kiri) */}
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none min-w-0">
@@ -294,12 +302,12 @@ export default function PresensiPage() {
       <Modal
         isOpen={isCheckInOpen && user.role !== 'parent'}
         onClose={() => setIsCheckInOpen(false)}
-        title="Check-In Sesi Mengajar (1-Klik)"
+        title="Check-In Sesi Mengajar"
         icon={CheckCircle2}
-        maxWidth="lg"
+        maxWidth="md"
       >
-        <form onSubmit={handle1ClickCheckIn} className="space-y-3.5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <form onSubmit={handle1ClickCheckIn} className="space-y-4">
+          <div className={`grid grid-cols-1 ${user.role !== 'teacher' ? 'sm:grid-cols-2' : ''} gap-3`}>
             {user.role !== 'teacher' && (
               <div>
                 <Label required className="text-xs font-bold text-slate-700 mb-1">Pilih Guru Pengajar:</Label>
@@ -325,6 +333,37 @@ export default function PresensiPage() {
                 isClearable
               />
             </div>
+          </div>
+
+          {/* Premium Container Jam Check-In */}
+          <div className="bg-slate-50/90 border border-slate-200/80 p-3.5 rounded-2xl space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <Clock className="w-3.5 h-3.5" />
+                </div>
+                <Label required className="text-xs font-extrabold text-slate-800">
+                  Jam Check-In (WIB):
+                </Label>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCiCheckInTime(new Date().toTimeString().slice(0, 5))}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-extrabold text-[11px] shadow-2xs transition cursor-pointer"
+              >
+                <Sparkles className="w-3 h-3 text-amber-300" /> Atur Jam Sekarang
+              </button>
+            </div>
+
+            <TimePicker
+              value={ciCheckInTime}
+              onChange={(t) => setCiCheckInTime(t)}
+            />
+
+            <p className="text-[10px] text-slate-500 font-medium leading-normal">
+              * Default terisi jam sekarang. Ketuk <strong className="text-emerald-700 font-bold">seluruh kotak</strong> untuk memilih jam, atau tombol <strong className="text-emerald-700 font-bold">"Atur Jam Sekarang"</strong>.
+            </p>
           </div>
 
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">

@@ -124,7 +124,7 @@ export default function DashboardPage() {
           </h1>
 
           <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-medium">
-            Sistem informasi operasional & pendampingan belajar anak. Pantau progress belajar, presensi AI kamera, dan rekap honor pengajar secara real-time.
+            Sistem informasi operasional & pendampingan belajar anak. Pantau progress belajar, presensi foto kamera, dan rekap honor pengajar secara real-time.
           </p>
 
           <div className="pt-2 flex flex-wrap items-center gap-2.5">

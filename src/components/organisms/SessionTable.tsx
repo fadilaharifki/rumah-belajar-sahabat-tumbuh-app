@@ -65,7 +65,7 @@ export const SessionTable: React.FC<SessionTableProps> = ({ logs = [], onPrintCl
             </div>
             {info.row.original.verified && (
               <Badge variant="emerald" size="sm" className="mt-1">
-                <ShieldCheck className="w-3 h-3 mr-0.5" /> AI Verified
+                <ShieldCheck className="w-3 h-3 mr-0.5" /> Terverifikasi
               </Badge>
             )}
           </div>

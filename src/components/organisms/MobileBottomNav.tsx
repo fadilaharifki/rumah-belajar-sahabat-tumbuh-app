@@ -101,14 +101,14 @@ export const MobileBottomNav: React.FC = () => {
             {isSlot2Active && <div className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-0.5 mx-auto" />}
           </Link>
 
-          {/* Item 3: Center Floating Camera Button (Presensi AI) */}
+          {/* Item 3: Center Floating Camera Button (Presensi) */}
           <div className="flex flex-col items-center justify-center relative -top-6 w-full">
             <Link
               href="/presensi"
               className={`w-13 h-13 rounded-full bg-emerald-600 text-amber-300 flex items-center justify-center shadow-xl shadow-emerald-600/40 border-4 border-white ring-4 ring-slate-50 transition transform active:scale-95 hover:scale-110 mx-auto ${
                 isSlot3Active ? 'bg-emerald-700 ring-emerald-300' : ''
               }`}
-              title="Presensi Check-In AI"
+              title="Presensi Check-In"
             >
               <Camera className="w-6 h-6 animate-pulse" />
             </Link>

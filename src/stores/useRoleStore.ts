@@ -19,11 +19,11 @@ export const ALL_CRUD_PERMISSIONS: PermissionItem[] = [
   // Dashboard
   { key: 'dashboard:read', label: 'Read (Melihat Dashboard Utama)', group: 'Dashboard Utama' },
 
-  // Presensi & AI
-  { key: 'presensi:read', label: 'Read (Melihat Lembar Presensi)', group: 'Presensi & Check-In AI' },
-  { key: 'presensi:create', label: 'Create (Check-In Presensi AI)', group: 'Presensi & Check-In AI' },
-  { key: 'presensi:update', label: 'Update (Mengedit Status Presensi)', group: 'Presensi & Check-In AI' },
-  { key: 'presensi:delete', label: 'Delete (Menghapus Data Presensi)', group: 'Presensi & Check-In AI' },
+  // Presensi & Check-In
+  { key: 'presensi:read', label: 'Read (Melihat Lembar Presensi)', group: 'Presensi & Check-In' },
+  { key: 'presensi:create', label: 'Create (Check-In Presensi)', group: 'Presensi & Check-In' },
+  { key: 'presensi:update', label: 'Update (Mengedit Status Presensi)', group: 'Presensi & Check-In' },
+  { key: 'presensi:delete', label: 'Delete (Menghapus Data Presensi)', group: 'Presensi & Check-In' },
 
   // Jadwal Ngajar
   { key: 'jadwal:read', label: 'Read (Melihat Jadwal Ngajar)', group: 'Jadwal Ngajar & Sesi' },
@@ -82,7 +82,7 @@ export const useRoleStore = create<RoleStoreState>((set) => ({
     {
       id: '22222222-2222-2222-2222-000000000002',
       name: 'Pengajar / Guru Pendamping',
-      description: 'Bisa melihat dashboard, presensi AI, jadwal, data guru & siswa, serta menginput jurnal catatan sesi',
+      description: 'Bisa melihat dashboard, presensi, jadwal, data guru & siswa, serta menginput jurnal catatan sesi',
       permissions: ['dashboard:read', 'presensi:read', 'presensi:create', 'jadwal:read', 'jadwal:create', 'guru:read', 'siswa:read', 'siswa:create', 'siswa:update', 'wali:read']
     },
     {
