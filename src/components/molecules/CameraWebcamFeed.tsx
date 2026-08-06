@@ -101,7 +101,7 @@ export const CameraWebcamFeed: React.FC<CameraWebcamFeedProps> = ({ onCapture, t
 
             <div className="absolute inset-0 border-2 border-dashed border-amber-400/80 rounded-3xl m-8 pointer-events-none flex flex-col items-center justify-between p-4">
               <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                AI Vision Face Frame
+                Frame Kamera Foto
               </span>
               <div className="w-32 h-40 border-2 border-emerald-400 rounded-full animate-pulse opacity-80" />
               <span className="text-white text-xs bg-slate-900/80 px-3 py-1 rounded-full font-medium">

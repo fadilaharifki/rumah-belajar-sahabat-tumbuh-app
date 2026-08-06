@@ -45,7 +45,7 @@ const INITIAL_HISTORY: AttendanceRecord[] = [
     check_in: '14:02:15',
     check_out: '15:32:00',
     duration_minutes: 90,
-    status: 'Terverifikasi AI'
+    status: 'Terverifikasi Foto'
   },
   {
     id: 'att-2',
@@ -55,7 +55,7 @@ const INITIAL_HISTORY: AttendanceRecord[] = [
     check_in: '15:30:10',
     check_out: '17:00:00',
     duration_minutes: 90,
-    status: 'Terverifikasi AI'
+    status: 'Terverifikasi Foto'
   }
 ];
 
@@ -109,7 +109,7 @@ export const useAttendanceStore = create<AttendanceState>((set, get) => ({
         check_in: session.check_in_time || '14:00:00',
         check_out: now,
         duration_minutes: duration,
-        status: 'Terverifikasi AI'
+        status: 'Terverifikasi Foto'
       };
 
       set((state) => ({

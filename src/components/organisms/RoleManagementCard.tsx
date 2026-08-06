@@ -9,7 +9,7 @@ import { Label } from '../atoms/Label';
 
 export const ALL_FEATURES = [
   { key: 'dashboard', label: 'Dashboard Utama', path: '/' },
-  { key: 'absensi', label: 'Lembar Absensi & Presensi AI', path: '/absensi' },
+  { key: 'absensi', label: 'Lembar Absensi & Presensi', path: '/absensi' },
   { key: 'jadwal', label: 'Jadwal Ngajar', path: '/jadwal' },
   { key: 'penggajian', label: 'Rekap Penggajian Guru', path: '/penggajian' },
   { key: 'perkembangan-siswa', label: 'Catatan Progress Siswa', path: '/perkembangan-siswa' },

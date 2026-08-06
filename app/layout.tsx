@@ -10,19 +10,22 @@ const poppins = Poppins({
   display: 'swap',
 });
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://rumah-belajar-sahabat-tumbuh.vercel.app');
+
 export const metadata: Metadata = {
+  metadataBase: new URL(appUrl),
   title: {
-    default: 'Rumah Belajar Sahabat Tumbuh - Presensi AI & Sistem Pendampingan',
+    default: 'Rumah Belajar Sahabat Tumbuh - Sistem Operasional & Pendampingan Belajar',
     template: '%s | Rumah Belajar Sahabat Tumbuh'
   },
   description:
-    'Sistem Informasi Bimbingan Belajar, Presensi AI Kamera, Jadwal Ngajar, Jurnal Progress Anak & Rekap Penggajian Guru Rumah Belajar Sahabat Tumbuh.',
+    'Sistem Informasi Bimbingan Belajar, Presensi Kamera, Jadwal Ngajar, Jurnal Progress Anak & Rekap Penggajian Guru Rumah Belajar Sahabat Tumbuh.',
   keywords: [
     'Rumah Belajar Sahabat Tumbuh',
     'Sahabat Tumbuh',
     'Bimbingan Belajar Anak',
     'Les Privat',
-    'Presensi AI Kamera',
+    'Presensi Kamera',
     'Jadwal Ngajar',
     'Catatan Progress Siswa',
     'Sistem Manajemen Les'
@@ -44,17 +47,32 @@ export const metadata: Metadata = {
     ]
   },
   openGraph: {
-    title: 'Rumah Belajar Sahabat Tumbuh - Presensi AI & Sistem Pendampingan',
+    title: 'Rumah Belajar Sahabat Tumbuh - Sistem Operasional & Pendampingan Belajar',
     description:
-      'Sistem Informasi Bimbingan Belajar, Presensi AI Kamera, Jadwal Ngajar & Jurnal Progress Anak Rumah Belajar Sahabat Tumbuh.',
+      'Sistem Informasi Bimbingan Belajar, Presensi Kamera, Jadwal Ngajar & Jurnal Progress Anak Rumah Belajar Sahabat Tumbuh.',
     siteName: 'Rumah Belajar Sahabat Tumbuh',
     locale: 'id_ID',
     type: 'website',
+    images: [
+      {
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'Rumah Belajar Sahabat Tumbuh',
+      },
+      {
+        url: '/og-image.svg',
+        width: 1200,
+        height: 630,
+        alt: 'Rumah Belajar Sahabat Tumbuh',
+      }
+    ]
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Rumah Belajar Sahabat Tumbuh',
-    description: 'Sistem Informasi Bimbingan Belajar & Presensi Kamera AI'
+    description: 'Sistem Informasi Bimbingan Belajar & Presensi Kamera',
+    images: ['/opengraph-image']
   },
   robots: {
     index: true,

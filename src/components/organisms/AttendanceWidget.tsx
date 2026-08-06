@@ -72,7 +72,7 @@ export const AttendanceWidget: React.FC = () => {
                 onClick={openCamera}
                 className="w-full sm:w-auto text-base font-bold shadow-lg"
               >
-                <Camera className="w-5 h-5 mr-2 text-amber-300" /> Check-In Presensi Wajah AI
+                <Camera className="w-5 h-5 mr-2 text-amber-300" /> Check-In Presensi Foto Kamera
               </Button>
               <p className="text-[11px] text-emerald-800 font-semibold flex items-center justify-center sm:justify-end gap-1">
                 <ShieldAlert className="w-3.5 h-3.5 text-emerald-600" /> Presensi verified waktu nyata
