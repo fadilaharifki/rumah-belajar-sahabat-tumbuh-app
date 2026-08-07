@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { INITIAL_SESSION_LOGS } from '@/utils/seedData';
 
 export interface SessionLog {
   id: string;
@@ -17,7 +16,7 @@ export interface SessionLog {
 }
 
 export const useSessions = () => {
-  const [logs, setLogs] = useState<SessionLog[]>(INITIAL_SESSION_LOGS);
+  const [logs, setLogs] = useState<SessionLog[]>([]);
 
   const addLog = (newLog: SessionLog) => {
     setLogs((prev) => [newLog, ...prev]);

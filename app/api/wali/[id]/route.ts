@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { getGuaranteedUniqueEmail } from '@/utils/emailUtils';
+import { supabase, supabaseAuthAdmin } from '@/lib/supabaseClient';
 
 const isSupabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -23,7 +24,14 @@ export async function PUT(
         .eq('id', id)
         .maybeSingle();
 
-      const targetEmail = email || parentData?.email;
+      const rawTargetEmail = email || parentData?.email;
+      const targetEmail = await getGuaranteedUniqueEmail(
+        rawTargetEmail,
+        name || parentData?.name || 'wali',
+        'wali',
+        parentData?.user_id,
+        parentData?.email
+      );
 
       // 1. Reset Password Action via PostgreSQL RPC (Zero session hijacking!)
       if (reset_password && targetEmail) {
@@ -47,16 +55,51 @@ export async function PUT(
         });
       }
 
-      // 2. Status Toggle & Avatar Update in public.users
-      if (status || (avatar_url !== undefined && avatar_url !== '')) {
-        const userUpdatePayload: Record<string, any> = {};
-        if (status) userUpdatePayload.status = status;
-        if (avatar_url !== undefined && avatar_url !== '') userUpdatePayload.avatar_url = avatar_url;
+      // 2. Sync to public.users (Data Pengguna) & Auth Users
+      const userUpdatePayload: Record<string, any> = {};
+      if (name) userUpdatePayload.full_name = name;
+      if (email) userUpdatePayload.email = targetEmail;
+      if (status) userUpdatePayload.status = status;
+      if (avatar_url !== undefined && avatar_url !== '') userUpdatePayload.avatar_url = avatar_url;
 
+      if (Object.keys(userUpdatePayload).length > 0) {
         if (parentData?.user_id) {
           await supabase.from('users').update(userUpdatePayload).eq('id', parentData.user_id);
+        } else if (parentData?.email) {
+          await supabase.from('users').update(userUpdatePayload).eq('email', parentData.email);
         } else if (targetEmail) {
           await supabase.from('users').update(userUpdatePayload).eq('email', targetEmail);
+        }
+      }
+
+      // Sync email update to Supabase Auth user & public.users via RPC function
+      if (email && parentData?.email && parentData.email.toLowerCase() !== targetEmail) {
+        // A. Primary SQL RPC sync to auth.users in Supabase Authentication
+        const { error: rpcSyncErr } = await supabase.rpc('sync_user_email', {
+          old_email: parentData.email,
+          new_email: targetEmail,
+          new_name: name || parentData.name
+        });
+
+        if (rpcSyncErr) {
+          console.warn('RPC sync_user_email note:', rpcSyncErr.message);
+        }
+
+        // B. Secondary Admin Auth API sync
+        try {
+          const { data: userList } = await supabaseAuthAdmin.auth.admin.listUsers();
+          const targetAuthUser = userList?.users?.find(
+            (u) => u.email?.toLowerCase() === parentData.email.toLowerCase()
+          );
+          if (targetAuthUser) {
+            await supabaseAuthAdmin.auth.admin.updateUserById(targetAuthUser.id, {
+              email: targetEmail,
+              email_confirm: true,
+              user_metadata: { full_name: name || parentData.name }
+            });
+          }
+        } catch (authErr: any) {
+          console.warn('Admin Auth email update note:', authErr.message);
         }
       }
 

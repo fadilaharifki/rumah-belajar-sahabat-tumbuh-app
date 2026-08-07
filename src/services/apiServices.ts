@@ -1,6 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
 import { Teacher, Student } from '@/hooks/useMasterData';
-import { INITIAL_TEACHERS, INITIAL_STUDENTS } from '@/utils/seedData';
 
 // Check if Supabase credentials are configured
 const isSupabaseConfigured = Boolean(
@@ -20,7 +19,7 @@ export interface StaffItem {
 export const apiService = {
   // --- TEACHERS ---
   async getTeachers(): Promise<Teacher[]> {
-    if (!isSupabaseConfigured) return INITIAL_TEACHERS;
+    if (!isSupabaseConfigured) return [];
 
     try {
       const { data, error } = await supabase.from('teachers').select('*').order('name');
@@ -76,7 +75,7 @@ export const apiService = {
 
   // --- STUDENTS ---
   async getStudents(): Promise<Student[]> {
-    if (!isSupabaseConfigured) return INITIAL_STUDENTS;
+    if (!isSupabaseConfigured) return [];
 
     try {
       const { data, error } = await supabase

@@ -11,12 +11,13 @@ import {
   ColumnDef,
   SortingState
 } from '@tanstack/react-table';
-import { HeartHandshake, Plus, Search, Phone, Mail, Edit3, Trash2, ArrowUpDown, GraduationCap, X, Key, Copy, Check, AlertTriangle, MapPin, MessageCircle, UserPlus } from 'lucide-react';
+import { HeartHandshake, Plus, Search, Phone, Mail, Edit3, Trash2, ArrowUpDown, GraduationCap, X, Key, Copy, Check, AlertTriangle, MapPin, MessageCircle, UserPlus, CheckSquare } from 'lucide-react';
 import {
   useWaliQuery,
   useCreateWaliMutation,
   useUpdateWaliMutation,
   useDeleteWaliMutation,
+  useBulkDeleteWaliMutation,
   WaliItem
 } from '@/hooks/queries/useWaliQueries';
 import { useAbility } from '@/hooks/useAbility';
@@ -40,6 +41,25 @@ export default function DataWaliPage() {
   const createWaliMutation = useCreateWaliMutation();
   const updateWaliMutation = useUpdateWaliMutation();
   const deleteWaliMutation = useDeleteWaliMutation();
+  const bulkDeleteWaliMutation = useBulkDeleteWaliMutation();
+
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+
+  const toggleSelectAll = (allList: WaliItem[]) => {
+    if (selectedIds.length === allList.length && allList.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(allList.map((w) => w.id));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
 
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -78,7 +98,7 @@ export default function DataWaliPage() {
     });
 
     const generatedPassword = res?.data?.generated_password || res?.generated_password || 'Wli' + Math.random().toString(36).slice(-6) + '!';
-    const finalEmail = res?.data?.email || pEmail || `wali.${Math.random().toString(36).slice(-4)}@sahabattumbuh.id`;
+    const finalEmail = res?.data?.email || pEmail || `wali.${Math.random().toString(36).slice(-4)}@rbst.com`;
 
     setCreatedAccountInfo({
       name: pName,
@@ -153,8 +173,38 @@ export default function DataWaliPage() {
     setEditingWali(null);
   };
 
-  const columns = useMemo<ColumnDef<WaliItem>[]>(
-    () => [
+  const columns = useMemo<ColumnDef<WaliItem>[]>(() => {
+    const cols: ColumnDef<WaliItem>[] = [];
+
+    if (isBulkMode) {
+      cols.push({
+        id: 'select',
+        header: () => (
+          <input
+            type="checkbox"
+            checked={waliList.length > 0 && selectedIds.length === waliList.length}
+            onChange={() => toggleSelectAll(waliList)}
+            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+          />
+        ),
+        cell: ({ row }) => (
+          <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(row.original.id)}
+              onChange={(e) => {
+                e.stopPropagation();
+                toggleSelectOne(row.original.id);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+            />
+          </div>
+        )
+      });
+    }
+
+    cols.push(
       {
         accessorKey: 'name',
         header: ({ column }) => (
@@ -253,9 +303,11 @@ export default function DataWaliPage() {
           </div>
         )
       }
-    ],
-    [deleteWaliMutation, can]
-  );
+    );
+    return cols;
+  },
+  [deleteWaliMutation, can, isBulkMode, selectedIds, waliList]
+);
 
   const table = useReactTable({
     data: waliList,
@@ -306,12 +358,75 @@ export default function DataWaliPage() {
           </div>
 
           {can('create', 'wali') && (
-            <Button variant="primary" size="sm" onClick={() => setIsFormOpen(!isFormOpen)} className="shadow-xs text-xs font-bold h-9 px-4 rounded-xl shrink-0">
-              <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Wali
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (isBulkMode) {
+                    setIsBulkMode(false);
+                    setSelectedIds([]);
+                  } else {
+                    setIsBulkMode(true);
+                  }
+                }}
+                className={`shadow-xs text-xs font-bold h-9 px-3 rounded-xl shrink-0 ${
+                  isBulkMode
+                    ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <CheckSquare className="w-3.5 h-3.5 mr-1" />
+                {isBulkMode ? 'Tutup Mode Massal' : 'Pilih Massal'}
+              </Button>
+
+              <Button variant="primary" size="sm" onClick={() => setIsFormOpen(!isFormOpen)} className="shadow-xs text-xs font-bold h-9 px-4 rounded-xl shrink-0">
+                <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Wali
+              </Button>
+            </div>
           )}
         </div>
       </div>
+
+      {/* Bulk Delete Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-3.5 flex items-center justify-between shadow-lg shadow-rose-100/50 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-xs">
+              {selectedIds.length}
+            </div>
+            <div>
+              <div className="text-xs font-bold text-rose-950">
+                {selectedIds.length} data wali terpilih
+              </div>
+              <div className="text-[11px] text-rose-600 font-medium">
+                Klik hapus untuk menghapus data wali terpilih secara bersamaan.
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds([])}
+              className="text-slate-600 hover:text-slate-900 text-xs"
+            >
+              Batal Pilih
+            </Button>
+            {can('delete', 'wali') && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setIsBulkDeleteModalOpen(true)}
+                className="font-bold text-xs gap-1.5 shadow-md shadow-rose-200"
+              >
+                <Trash2 className="w-4 h-4" />
+                Hapus {selectedIds.length} Wali Terpilih
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 1. REUSABLE MODAL: RESET PASSWORD WALI */}
       <Modal
@@ -410,44 +525,51 @@ export default function DataWaliPage() {
         )}
       </Modal>
 
-      {/* 4. REUSABLE MODAL: TAMBAH WALI BARU */}
+      {/* 4. REUSABLE MODAL: TAMBAH WALI */}
       <Modal
         isOpen={isFormOpen && can('create', 'wali')}
         onClose={() => setIsFormOpen(false)}
         title="Tambah Orang Tua / Wali Baru"
         icon={UserPlus}
-        maxWidth="3xl"
+        maxWidth="lg"
       >
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-6 items-center">
-            <ImageUpload currentImageUrl={pAvatarUrl} onImageUploaded={setPAvatarUrl} />
-            <form onSubmit={handleWaliSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+          <div className="flex justify-center pb-2 border-b border-slate-100">
+            <ImageUpload name={pName} currentImageUrl={pAvatarUrl} onImageUploaded={setPAvatarUrl} />
+          </div>
+
+          <form onSubmit={handleWaliSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label required>Nama Lengkap Wali:</Label>
+                <Label required>Nama Lengkap Wali</Label>
                 <Input required value={pName} onChange={(e) => setPName(e.target.value)} placeholder="Ibu Ratna" />
               </div>
+
               <div>
-                <Label required>No. WhatsApp / HP:</Label>
+                <Label required>No. WhatsApp / HP</Label>
                 <Input required value={pPhone} onChange={(e) => setPPhone(e.target.value)} placeholder="081987654321" />
               </div>
+
               <div>
-                <Label>Email Akun Wali (Opsional):</Label>
+                <Label>Email Akun Wali (Opsional)</Label>
                 <Input type="email" value={pEmail} onChange={(e) => setPEmail(e.target.value)} placeholder="ratna.wali@gmail.com" />
               </div>
+
               <div>
-                <Label>Alamat Rumah (Opsional):</Label>
+                <Label>Alamat Rumah (Opsional)</Label>
                 <Input value={pAddress} onChange={(e) => setPAddress(e.target.value)} placeholder="Jl. Merdeka No. 12, Jakarta" />
               </div>
-              <div className="sm:col-span-2 flex justify-end gap-2 pt-3 border-t border-slate-100">
-                <Button variant="outline" size="sm" type="button" onClick={() => setIsFormOpen(false)} className="h-9 px-4 text-xs font-bold rounded-xl">
-                  Batal
-                </Button>
-                <Button variant="primary" size="sm" type="submit" disabled={createWaliMutation.isPending} className="h-9 px-5 text-xs font-bold rounded-xl shadow-md">
-                  {createWaliMutation.isPending ? 'Menyimpan...' : 'Simpan Wali Baru'}
-                </Button>
-              </div>
-            </form>
-          </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+              <Button variant="outline" size="sm" type="button" onClick={() => setIsFormOpen(false)} className="h-9 px-4 text-xs font-bold rounded-xl">
+                Batal
+              </Button>
+              <Button variant="primary" size="sm" type="submit" disabled={createWaliMutation.isPending} className="h-9 px-5 text-xs font-bold rounded-xl shadow-md">
+                {createWaliMutation.isPending ? 'Menyimpan...' : 'Simpan Wali Baru'}
+              </Button>
+            </div>
+          </form>
         </div>
       </Modal>
 
@@ -457,30 +579,37 @@ export default function DataWaliPage() {
         onClose={() => setEditingWali(null)}
         title="Edit Data Wali Siswa"
         icon={Edit3}
-        maxWidth="3xl"
+        maxWidth="lg"
       >
         <div className="space-y-4">
-          <ImageUpload currentImageUrl={editAvatarUrl} onImageUploaded={setEditAvatarUrl} />
+          <div className="flex justify-center pb-2 border-b border-slate-100">
+            <ImageUpload name={editName} currentImageUrl={editAvatarUrl} onImageUploaded={setEditAvatarUrl} />
+          </div>
 
           <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div>
-              <Label required>Nama Lengkap Wali:</Label>
-              <Input required value={editName} onChange={(e) => setEditName(e.target.value)} />
-            </div>
-            <div>
-              <Label required>No. WhatsApp / HP:</Label>
-              <Input required value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
-            </div>
-            <div>
-              <Label required>Email Akun:</Label>
-              <Input required type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
-            </div>
-            <div>
-              <Label>Alamat Rumah:</Label>
-              <Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label required>Nama Lengkap Wali</Label>
+                <Input required value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </div>
+
+              <div>
+                <Label required>No. WhatsApp / HP</Label>
+                <Input required value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+              </div>
+
+              <div>
+                <Label>Email Akun</Label>
+                <Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+              </div>
+
+              <div>
+                <Label>Alamat Rumah</Label>
+                <Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
+              </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
               <Button variant="outline" size="sm" type="button" onClick={() => setEditingWali(null)} className="h-9 px-4 text-xs font-bold rounded-xl">
                 Batal
               </Button>
@@ -517,7 +646,17 @@ export default function DataWaliPage() {
               <tbody className="divide-y divide-slate-100 text-xs font-medium">
                 {table.getRowModel().rows.length > 0 ? (
                   table.getRowModel().rows.map((row) => (
-                    <tr key={row.id} className="hover:bg-emerald-50/20 transition">
+                    <tr
+                      key={row.id}
+                      onClick={() => {
+                        if (isBulkMode) {
+                          toggleSelectOne(row.original.id);
+                        }
+                      }}
+                      className={`hover:bg-emerald-50/20 transition ${
+                        isBulkMode ? 'cursor-pointer' : ''
+                      } ${selectedIds.includes(row.original.id) ? 'bg-emerald-50/60' : ''}`}
+                    >
                       {row.getVisibleCells().map((cell) => (
                         <td key={cell.id} className="px-3.5 py-2.5 align-middle">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -539,6 +678,38 @@ export default function DataWaliPage() {
           <TablePagination table={table} />
         </Card>
       )}
+
+      {/* BULK DELETE MODAL */}
+      <Modal
+        isOpen={isBulkDeleteModalOpen}
+        onClose={() => setIsBulkDeleteModalOpen(false)}
+        title="Konfirmasi Hapus Banyak Wali"
+        icon={AlertTriangle}
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Apakah Anda yakin ingin menghapus <strong className="text-slate-900">{selectedIds.length} data wali</strong> terpilih?
+            Tindakan ini akan menghapus data wali dan akun penggunanya secara permanen.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="ghost" onClick={() => setIsBulkDeleteModalOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              disabled={bulkDeleteWaliMutation.isPending}
+              onClick={async () => {
+                await bulkDeleteWaliMutation.mutateAsync(selectedIds);
+                setSelectedIds([]);
+                setIsBulkDeleteModalOpen(false);
+              }}
+            >
+              {bulkDeleteWaliMutation.isPending ? 'Menghapus...' : `Ya, Hapus ${selectedIds.length} Wali`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

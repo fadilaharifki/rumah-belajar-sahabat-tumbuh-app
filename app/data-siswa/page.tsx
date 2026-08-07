@@ -14,7 +14,7 @@ import {
 } from '@tanstack/react-table';
 import {
   GraduationCap, Plus, Search, Phone, Edit3, Trash2, ArrowUpDown,
-  ChevronRight, Eye, User, X, AlertTriangle, MessageCircle, ArrowDown, UserPlus
+  ChevronRight, Eye, User, X, AlertTriangle, MessageCircle, ArrowDown, UserPlus, CheckSquare
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import {
@@ -23,6 +23,7 @@ import {
   useCreateSiswaMutation,
   useUpdateSiswaMutation,
   useDeleteSiswaMutation,
+  useBulkDeleteSiswaMutation,
   StudentItem
 } from '@/hooks/queries/useSiswaQueries';
 import { useWaliQuery } from '@/hooks/queries/useWaliQueries';
@@ -191,8 +192,58 @@ export default function DataSiswaPage() {
     setEditingStudent(null);
   };
 
-  const columns = useMemo<ColumnDef<StudentItem>[]>(
-    () => [
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+
+  const bulkDeleteSiswaMutation = useBulkDeleteSiswaMutation();
+
+  const toggleSelectAll = (allList: StudentItem[]) => {
+    if (selectedIds.length === allList.length && allList.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(allList.map((s) => s.id));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const columns = useMemo<ColumnDef<StudentItem>[]>(() => {
+    const cols: ColumnDef<StudentItem>[] = [];
+
+    if (isBulkMode) {
+      cols.push({
+        id: 'select',
+        header: () => (
+          <input
+            type="checkbox"
+            checked={students.length > 0 && selectedIds.length === students.length}
+            onChange={() => toggleSelectAll(students)}
+            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+          />
+        ),
+        cell: ({ row }) => (
+          <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(row.original.id)}
+              onChange={(e) => {
+                e.stopPropagation();
+                toggleSelectOne(row.original.id);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+            />
+          </div>
+        )
+      });
+    }
+
+    cols.push(
       {
         accessorKey: 'name',
         header: ({ column }) => (
@@ -292,9 +343,11 @@ export default function DataSiswaPage() {
           </div>
         )
       }
-    ],
-    [router, deleteSiswaMutation, can]
-  );
+    );
+    return cols;
+  },
+  [router, deleteSiswaMutation, can, isBulkMode, selectedIds, students]
+);
 
   const table = useReactTable({
     data: students,
@@ -347,12 +400,75 @@ export default function DataSiswaPage() {
           </div>
 
           {can('create', 'siswa') && (
-            <Button variant="primary" size="sm" onClick={() => setIsFormOpen(!isFormOpen)} className="shadow-xs text-xs font-bold h-9 px-4 rounded-xl shrink-0">
-              <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Siswa
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (isBulkMode) {
+                    setIsBulkMode(false);
+                    setSelectedIds([]);
+                  } else {
+                    setIsBulkMode(true);
+                  }
+                }}
+                className={`shadow-xs text-xs font-bold h-9 px-3 rounded-xl shrink-0 ${
+                  isBulkMode
+                    ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <CheckSquare className="w-3.5 h-3.5 mr-1" />
+                {isBulkMode ? 'Tutup Mode Massal' : 'Pilih Massal'}
+              </Button>
+
+              <Button variant="primary" size="sm" onClick={() => setIsFormOpen(!isFormOpen)} className="shadow-xs text-xs font-bold h-9 px-4 rounded-xl shrink-0">
+                <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Siswa
+              </Button>
+            </div>
           )}
         </div>
       </div>
+
+      {/* Bulk Delete Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-3.5 flex items-center justify-between shadow-lg shadow-rose-100/50 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-xs">
+              {selectedIds.length}
+            </div>
+            <div>
+              <div className="text-xs font-bold text-rose-950">
+                {selectedIds.length} data siswa terpilih
+              </div>
+              <div className="text-[11px] text-rose-600 font-medium">
+                Klik hapus untuk menghapus data siswa terpilih secara bersamaan.
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds([])}
+              className="text-slate-600 hover:text-slate-900 text-xs"
+            >
+              Batal Pilih
+            </Button>
+            {can('delete', 'siswa') && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setIsBulkDeleteModalOpen(true)}
+                className="font-bold text-xs gap-1.5 shadow-md shadow-rose-200"
+              >
+                <Trash2 className="w-4 h-4" />
+                Hapus {selectedIds.length} Siswa Terpilih
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 1. REUSABLE MODAL: KONFIRMASI HAPUS SISWA */}
       <Modal
@@ -553,8 +669,16 @@ export default function DataSiswaPage() {
                     table.getRowModel().rows.map((row) => (
                       <tr
                         key={row.id}
-                        onClick={() => router.push(`/data-siswa/${row.original.id}`)}
-                        className="hover:bg-emerald-50/40 cursor-pointer transition group"
+                        onClick={() => {
+                          if (isBulkMode) {
+                            toggleSelectOne(row.original.id);
+                          } else {
+                            router.push(`/data-siswa/${row.original.id}`);
+                          }
+                        }}
+                        className={`hover:bg-emerald-50/40 cursor-pointer transition group ${
+                          selectedIds.includes(row.original.id) ? 'bg-emerald-50/60' : ''
+                        }`}
                       >
                         {row.getVisibleCells().map((cell) => (
                           <td key={cell.id} className="px-3.5 py-2.5 align-middle">
@@ -583,11 +707,33 @@ export default function DataSiswaPage() {
               mobileStudents.map((std) => (
                 <Card
                   key={std.id}
-                  onClick={() => router.push(`/data-siswa/${std.id}`)}
-                  className="p-4 space-y-3 bg-white border border-slate-200 shadow-xs hover:border-emerald-300 transition cursor-pointer rounded-2xl"
+                  onClick={() => {
+                    if (isBulkMode) {
+                      toggleSelectOne(std.id);
+                    } else {
+                      router.push(`/data-siswa/${std.id}`);
+                    }
+                  }}
+                  className={`p-4 space-y-3 bg-white border transition cursor-pointer rounded-2xl ${
+                    selectedIds.includes(std.id)
+                      ? 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-400/40'
+                      : 'border-slate-200 hover:border-emerald-300'
+                  }`}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
+                      {isBulkMode && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(std.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            toggleSelectOne(std.id);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                        />
+                      )}
                       <Avatar name={std.name} src={std.avatar_url} size="lg" className="ring-2 ring-emerald-400/40 shrink-0" />
                       <div>
                         <h3 className="font-extrabold text-slate-900 text-sm">{std.name}</h3>
@@ -689,6 +835,38 @@ export default function DataSiswaPage() {
           </div>
         </>
       )}
+
+      {/* BULK DELETE MODAL */}
+      <Modal
+        isOpen={isBulkDeleteModalOpen}
+        onClose={() => setIsBulkDeleteModalOpen(false)}
+        title="Konfirmasi Hapus Banyak Siswa"
+        icon={AlertTriangle}
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Apakah Anda yakin ingin menghapus <strong className="text-slate-900">{selectedIds.length} data siswa</strong> terpilih?
+            Tindakan ini akan menghapus data terpilih secara permanen.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="ghost" onClick={() => setIsBulkDeleteModalOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              disabled={bulkDeleteSiswaMutation.isPending}
+              onClick={async () => {
+                await bulkDeleteSiswaMutation.mutateAsync(selectedIds);
+                setSelectedIds([]);
+                setIsBulkDeleteModalOpen(false);
+              }}
+            >
+              {bulkDeleteSiswaMutation.isPending ? 'Menghapus...' : `Ya, Hapus ${selectedIds.length} Siswa`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getGuaranteedUniqueEmail } from '@/utils/emailUtils';
 import { supabase, supabaseAuthAdmin } from '@/lib/supabaseClient';
 
 const isSupabaseConfigured = Boolean(
@@ -25,7 +26,14 @@ export async function PUT(
         .eq('id', id)
         .maybeSingle();
 
-      const teacherEmail = (email || teacherData?.email || '').toLowerCase().trim();
+      const rawTargetEmail = email || teacherData?.email;
+      const teacherEmail = await getGuaranteedUniqueEmail(
+        rawTargetEmail,
+        name || teacherData?.name || 'guru',
+        'guru',
+        teacherData?.user_id,
+        teacherData?.email
+      );
 
       // 1. Reset Password Action (RPC + Admin Auth Sync)
       if (reset_password && teacherEmail) {
@@ -67,16 +75,51 @@ export async function PUT(
         });
       }
 
-      // 2. Status Toggle & Avatar Update in public.users
-      if (status || (targetPhoto !== undefined && targetPhoto !== '')) {
-        const userUpdatePayload: Record<string, any> = {};
-        if (status) userUpdatePayload.status = status;
-        if (targetPhoto !== undefined && targetPhoto !== '') userUpdatePayload.avatar_url = targetPhoto;
+      // 2. Sync to public.users (Data Pengguna) & Auth Users
+      const userUpdatePayload: Record<string, any> = {};
+      if (name) userUpdatePayload.full_name = name;
+      if (email) userUpdatePayload.email = teacherEmail;
+      if (status) userUpdatePayload.status = status;
+      if (targetPhoto !== undefined && targetPhoto !== '') userUpdatePayload.avatar_url = targetPhoto;
 
+      if (Object.keys(userUpdatePayload).length > 0) {
         if (teacherData?.user_id) {
           await supabase.from('users').update(userUpdatePayload).eq('id', teacherData.user_id);
+        } else if (teacherData?.email) {
+          await supabase.from('users').update(userUpdatePayload).eq('email', teacherData.email);
         } else if (teacherEmail) {
           await supabase.from('users').update(userUpdatePayload).eq('email', teacherEmail);
+        }
+      }
+
+      // Sync email update to Supabase Auth user & public.users via RPC function
+      if (email && teacherData?.email && teacherData.email.toLowerCase() !== teacherEmail) {
+        // A. Primary SQL RPC sync to auth.users in Supabase Authentication
+        const { error: rpcSyncErr } = await supabase.rpc('sync_user_email', {
+          old_email: teacherData.email,
+          new_email: teacherEmail,
+          new_name: name || teacherData.name
+        });
+
+        if (rpcSyncErr) {
+          console.warn('RPC sync_user_email note:', rpcSyncErr.message);
+        }
+
+        // B. Secondary Admin Auth API sync
+        try {
+          const { data: userList } = await supabaseAuthAdmin.auth.admin.listUsers();
+          const targetAuthUser = userList?.users?.find(
+            (u) => u.email?.toLowerCase() === teacherData.email.toLowerCase()
+          );
+          if (targetAuthUser) {
+            await supabaseAuthAdmin.auth.admin.updateUserById(targetAuthUser.id, {
+              email: teacherEmail,
+              email_confirm: true,
+              user_metadata: { full_name: name || teacherData.name }
+            });
+          }
+        } catch (authErr: any) {
+          console.warn('Admin Auth email update note:', authErr.message);
         }
       }
 

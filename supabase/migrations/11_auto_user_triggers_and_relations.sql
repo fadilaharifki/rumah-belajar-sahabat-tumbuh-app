@@ -73,7 +73,7 @@ DECLARE
   v_user_id UUID;
   v_email VARCHAR(255);
 BEGIN
-  v_email := LOWER(TRIM(COALESCE(NEW.email, 'wali.' || replace(gen_random_uuid()::text, '-', '') || '@sahabattumbuh.id')));
+  v_email := LOWER(TRIM(COALESCE(NEW.email, 'wali.' || replace(gen_random_uuid()::text, '-', '') || '@rbst.com')));
   IF NEW.email IS NULL THEN
     NEW.email := v_email;
   END IF;
@@ -252,3 +252,4 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Notify PostgREST engine to instantly refresh schema cache & functions
 NOTIFY pgrst, 'reload schema';
+

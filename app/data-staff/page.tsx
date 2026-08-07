@@ -11,12 +11,13 @@ import {
   ColumnDef,
   SortingState
 } from '@tanstack/react-table';
-import { ShieldCheck, Users, Plus, Search, Mail, Phone, Edit3, Trash2, ArrowUpDown, X, Key, Copy, Check, AlertTriangle, UserPlus } from 'lucide-react';
+import { ShieldCheck, Users, Plus, Search, Mail, Phone, Edit3, Trash2, ArrowUpDown, X, Key, Copy, Check, AlertTriangle, UserPlus, CheckSquare } from 'lucide-react';
 import {
   useStaffQuery,
   useCreateStaffMutation,
   useUpdateStaffMutation,
-  useDeleteStaffMutation
+  useDeleteStaffMutation,
+  useBulkDeleteStaffMutation
 } from '@/hooks/queries/useStaffQueries';
 import { useRoleStore } from '@/stores/useRoleStore';
 import { useAbility } from '@/hooks/useAbility';
@@ -52,6 +53,25 @@ export default function DataStaffPage() {
   const createStaffMutation = useCreateStaffMutation();
   const updateStaffMutation = useUpdateStaffMutation();
   const deleteStaffMutation = useDeleteStaffMutation();
+  const bulkDeleteStaffMutation = useBulkDeleteStaffMutation();
+
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+
+  const toggleSelectAll = (allList: ManagementStaffItem[]) => {
+    if (selectedIds.length === allList.length && allList.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(allList.map((s) => s.id));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
 
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -163,8 +183,38 @@ export default function DataStaffPage() {
     setEditingStaff(null);
   };
 
-  const columns = useMemo<ColumnDef<ManagementStaffItem>[]>(
-    () => [
+  const columns = useMemo<ColumnDef<ManagementStaffItem>[]>(() => {
+    const cols: ColumnDef<ManagementStaffItem>[] = [];
+
+    if (isBulkMode) {
+      cols.push({
+        id: 'select',
+        header: () => (
+          <input
+            type="checkbox"
+            checked={staffList.length > 0 && selectedIds.length === staffList.length}
+            onChange={() => toggleSelectAll(staffList)}
+            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+          />
+        ),
+        cell: ({ row }) => (
+          <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(row.original.id)}
+              onChange={(e) => {
+                e.stopPropagation();
+                toggleSelectOne(row.original.id);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+            />
+          </div>
+        )
+      });
+    }
+
+    cols.push(
       {
         accessorKey: 'name',
         header: ({ column }) => (
@@ -254,9 +304,11 @@ export default function DataStaffPage() {
           </div>
         )
       }
-    ],
-    [roles, deleteStaffMutation, can]
-  );
+    );
+    return cols;
+  },
+  [roles, deleteStaffMutation, can, isBulkMode, selectedIds, staffList]
+);
 
   const table = useReactTable({
     data: staffList,
@@ -307,12 +359,75 @@ export default function DataStaffPage() {
           </div>
 
           {can('create', 'staff') && (
-            <Button variant="primary" size="sm" onClick={() => setIsFormOpen(!isFormOpen)} className="shadow-xs text-xs font-bold h-9 px-4 rounded-xl shrink-0">
-              <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Staff
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (isBulkMode) {
+                    setIsBulkMode(false);
+                    setSelectedIds([]);
+                  } else {
+                    setIsBulkMode(true);
+                  }
+                }}
+                className={`shadow-xs text-xs font-bold h-9 px-3 rounded-xl shrink-0 ${
+                  isBulkMode
+                    ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <CheckSquare className="w-3.5 h-3.5 mr-1" />
+                {isBulkMode ? 'Tutup Mode Massal' : 'Pilih Massal'}
+              </Button>
+
+              <Button variant="primary" size="sm" onClick={() => setIsFormOpen(!isFormOpen)} className="shadow-xs text-xs font-bold h-9 px-4 rounded-xl shrink-0">
+                <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Staff
+              </Button>
+            </div>
           )}
         </div>
       </div>
+
+      {/* Bulk Delete Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-3.5 flex items-center justify-between shadow-lg shadow-rose-100/50 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-xs">
+              {selectedIds.length}
+            </div>
+            <div>
+              <div className="text-xs font-bold text-rose-950">
+                {selectedIds.length} data staff terpilih
+              </div>
+              <div className="text-[11px] text-rose-600 font-medium">
+                Klik hapus untuk menghapus data staff terpilih secara bersamaan.
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds([])}
+              className="text-slate-600 hover:text-slate-900 text-xs"
+            >
+              Batal Pilih
+            </Button>
+            {can('delete', 'staff') && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setIsBulkDeleteModalOpen(true)}
+                className="font-bold text-xs gap-1.5 shadow-md shadow-rose-200"
+              >
+                <Trash2 className="w-4 h-4" />
+                Hapus {selectedIds.length} Staff Terpilih
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 1. REUSABLE MODAL: RESET PASSWORD STAFF */}
       <Modal
@@ -411,40 +526,46 @@ export default function DataStaffPage() {
         )}
       </Modal>
 
-      {/* 4. REUSABLE MODAL: TAMBAH STAFF MANAGEMENT BARU */}
+      {/* 4. REUSABLE MODAL: TAMBAH STAFF */}
       <Modal
         isOpen={isFormOpen && can('create', 'staff')}
         onClose={() => setIsFormOpen(false)}
         title="Tambah Staff Management Baru"
         icon={UserPlus}
-        maxWidth="lg"
+        maxWidth="md"
       >
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-6 items-center">
-            <ImageUpload currentImageUrl={mAvatarUrl} onImageUploaded={setMAvatarUrl} />
-            <form onSubmit={handleStaffSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+          <div className="flex justify-center pb-2 border-b border-slate-100">
+            <ImageUpload name={mName} currentImageUrl={mAvatarUrl} onImageUploaded={setMAvatarUrl} />
+          </div>
+
+          <form onSubmit={handleStaffSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label required>Nama Lengkap Staff:</Label>
+                <Label required>Nama Lengkap Staff</Label>
                 <Input required value={mName} onChange={(e) => setMName(e.target.value)} placeholder="Bapak Ahmad" />
               </div>
+
               <div>
-                <Label required>Email Akun:</Label>
-                <Input required type="email" value={mEmail} onChange={(e) => setMEmail(e.target.value)} placeholder="keuangan@sahabattumbuh.id" />
+                <Label required>Email Akun</Label>
+                <Input required type="email" value={mEmail} onChange={(e) => setMEmail(e.target.value)} placeholder="keuangan@rbst.com" />
               </div>
-              <div className="sm:col-span-2">
-                <Label required>No. HP:</Label>
-                <Input required value={mPhone} onChange={(e) => setMPhone(e.target.value)} placeholder="081998877665" />
-              </div>
-              <div className="sm:col-span-2 flex justify-end gap-2 pt-3 border-t border-slate-100">
-                <Button variant="outline" size="sm" type="button" onClick={() => setIsFormOpen(false)} className="h-9 px-4 text-xs font-bold rounded-xl">
-                  Batal
-                </Button>
-                <Button variant="primary" size="sm" type="submit" disabled={createStaffMutation.isPending} className="h-9 px-5 text-xs font-bold rounded-xl shadow-md">
-                  {createStaffMutation.isPending ? 'Menyimpan...' : 'Simpan Staff Management'}
-                </Button>
-              </div>
-            </form>
-          </div>
+            </div>
+
+            <div>
+              <Label required>No. WhatsApp / HP</Label>
+              <Input required value={mPhone} onChange={(e) => setMPhone(e.target.value)} placeholder="081998877665" />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+              <Button variant="outline" size="sm" type="button" onClick={() => setIsFormOpen(false)} className="h-9 px-4 text-xs font-bold rounded-xl">
+                Batal
+              </Button>
+              <Button variant="primary" size="sm" type="submit" disabled={createStaffMutation.isPending} className="h-9 px-5 text-xs font-bold rounded-xl shadow-md">
+                {createStaffMutation.isPending ? 'Menyimpan...' : 'Simpan Staff'}
+              </Button>
+            </div>
+          </form>
         </div>
       </Modal>
 
@@ -454,26 +575,32 @@ export default function DataStaffPage() {
         onClose={() => setEditingStaff(null)}
         title="Edit Data Staff Management"
         icon={Edit3}
-        maxWidth="lg"
+        maxWidth="md"
       >
         <div className="space-y-4">
-          <ImageUpload currentImageUrl={editAvatarUrl} onImageUploaded={setEditAvatarUrl} />
+          <div className="flex justify-center pb-2 border-b border-slate-100">
+            <ImageUpload name={editName} currentImageUrl={editAvatarUrl} onImageUploaded={setEditAvatarUrl} />
+          </div>
 
           <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div>
-              <Label required>Nama Lengkap Staff:</Label>
-              <Input required value={editName} onChange={(e) => setEditName(e.target.value)} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label required>Nama Lengkap Staff</Label>
+                <Input required value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </div>
+
+              <div>
+                <Label required>Email Akun</Label>
+                <Input required type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+              </div>
             </div>
+
             <div>
-              <Label required>Email:</Label>
-              <Input required type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
-            </div>
-            <div>
-              <Label required>No. HP:</Label>
+              <Label required>No. WhatsApp / HP</Label>
               <Input required value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
               <Button variant="outline" size="sm" type="button" onClick={() => setEditingStaff(null)} className="h-9 px-4 text-xs font-bold rounded-xl">
                 Batal
               </Button>
@@ -508,30 +635,72 @@ export default function DataStaffPage() {
                 ))}
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-medium">
-                {table.getRowModel().rows.length > 0 ? (
-                  table.getRowModel().rows.map((row) => (
-                    <tr key={row.id} className="hover:bg-amber-50/20 transition group">
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-3.5 py-2.5 align-middle">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
+                  {table.getRowModel().rows.length > 0 ? (
+                    table.getRowModel().rows.map((row) => (
+                      <tr
+                        key={row.id}
+                        onClick={() => {
+                          if (isBulkMode) {
+                            toggleSelectOne(row.original.id);
+                          }
+                        }}
+                        className={`hover:bg-amber-50/20 transition group ${
+                          isBulkMode ? 'cursor-pointer' : ''
+                        } ${selectedIds.includes(row.original.id) ? 'bg-amber-50/60' : ''}`}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <td key={cell.id} className="px-3.5 py-2.5 align-middle">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={columns.length} className="text-center py-12 text-slate-400">
+                        Tidak ada data staff yang cocok.
+                      </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={columns.length} className="text-center py-12 text-slate-400">
-                      Tidak ada data staff yang cocok.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-          <TablePagination table={table} />
-        </Card>
-      )}
+            <TablePagination table={table} />
+          </Card>
+        )}
+
+      {/* BULK DELETE MODAL */}
+      <Modal
+        isOpen={isBulkDeleteModalOpen}
+        onClose={() => setIsBulkDeleteModalOpen(false)}
+        title="Konfirmasi Hapus Banyak Staff"
+        icon={AlertTriangle}
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Apakah Anda yakin ingin menghapus <strong className="text-slate-900">{selectedIds.length} data staff</strong> terpilih?
+            Tindakan ini akan menghapus data staff dan akun penggunanya secara permanen.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="ghost" onClick={() => setIsBulkDeleteModalOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              disabled={bulkDeleteStaffMutation.isPending}
+              onClick={async () => {
+                await bulkDeleteStaffMutation.mutateAsync(selectedIds);
+                setSelectedIds([]);
+                setIsBulkDeleteModalOpen(false);
+              }}
+            >
+              {bulkDeleteStaffMutation.isPending ? 'Menghapus...' : `Ya, Hapus ${selectedIds.length} Staff`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

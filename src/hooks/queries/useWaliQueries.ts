@@ -112,3 +112,30 @@ export function useDeleteWaliMutation() {
     }
   });
 }
+
+// Hook for bulk deleting Wali by array of IDs
+export function useBulkDeleteWaliMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await fetch('/api/wali', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Gagal menghapus data wali terpilih.');
+      }
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: WALI_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.error(data?.message || 'Data wali terpilih berhasil dihapus.');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal menghapus data wali terpilih!');
+    }
+  });
+}

@@ -1,12 +1,11 @@
-'use client';
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { Avatar } from '../atoms/Avatar';
 
 export interface ImageUploadProps {
   currentImageUrl?: string;
+  name?: string;
   onImageUploaded: (url: string) => void;
   onUploadingChange?: (isUploading: boolean) => void;
   folder?: string;
@@ -14,11 +13,16 @@ export interface ImageUploadProps {
 
 export const ImageUpload: React.FC<ImageUploadProps> = ({
   currentImageUrl,
+  name = '',
   onImageUploaded,
   onUploadingChange,
   folder = 'avatars'
 }) => {
   const [previewUrl, setPreviewUrl] = useState<string>(currentImageUrl || '');
+
+  useEffect(() => {
+    setPreviewUrl(currentImageUrl || '');
+  }, [currentImageUrl]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -111,6 +115,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       >
         <Avatar
           src={previewUrl}
+          name={name}
           size="xl"
           className="ring-4 ring-emerald-500 shadow-lg w-20 h-20 sm:w-24 sm:h-24"
         />

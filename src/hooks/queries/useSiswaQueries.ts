@@ -171,3 +171,30 @@ export function useDeleteSiswaMutation() {
     }
   });
 }
+
+// Hook for bulk deleting Siswa by array of IDs
+export function useBulkDeleteSiswaMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await fetch('/api/siswa', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Gagal menghapus data siswa terpilih.');
+      }
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: SISWA_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['siswa-infinite'] });
+      toast.error(data?.message || 'Data siswa terpilih berhasil dihapus.');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal menghapus data siswa terpilih!');
+    }
+  });
+}

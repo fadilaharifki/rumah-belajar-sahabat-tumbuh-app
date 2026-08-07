@@ -160,7 +160,7 @@ export async function POST(request: Request) {
         user: {
           id: 'admin-1',
           full_name: 'Ibu Nurul (Pemilik / Admin)',
-          email: 'pemilik@sahabattumbuh.id',
+          email: 'pemilik@rbst.com',
           role: 'admin',
           avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80'
         }
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
         user: {
           id: 'parent-1',
           full_name: 'Ibu Ratna (Wali Bintang)',
-          email: 'wali.bintang@sahabattumbuh.id',
+          email: 'wali.bintang@rbst.com',
           role: 'parent'
         }
       });

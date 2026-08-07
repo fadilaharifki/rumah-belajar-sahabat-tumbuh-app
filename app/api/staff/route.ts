@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getGuaranteedUniqueEmail } from '@/utils/emailUtils';
 import { supabase } from '@/lib/supabaseClient';
 
 const isSupabaseConfigured = Boolean(
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const cleanEmail = email.toLowerCase().trim();
+    const cleanEmail = await getGuaranteedUniqueEmail(email, name, 'staff');
     const randomPassword = `Stf${Math.random().toString(36).slice(-6)}!`;
 
     if (isSupabaseConfigured) {
@@ -148,6 +149,46 @@ export async function POST(request: Request) {
     };
 
     return NextResponse.json({ success: true, data: mockStaff, note: 'Mock mode' });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+// DELETE /api/staff - Bulk delete staff members by array of IDs { ids: string[] }
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    const { ids } = body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ success: false, error: 'Daftar ID staff wajib diisi!' }, { status: 400 });
+    }
+
+    if (isSupabaseConfigured) {
+      // Fetch staff to get user_ids or emails for cascading deletion
+      const { data: staffToDelete } = await supabase
+        .from('staff')
+        .select('id, user_id, email')
+        .in('id', ids);
+
+      const userIds = (staffToDelete || []).map((s) => s.user_id).filter(Boolean);
+      const emails = (staffToDelete || []).map((s) => s.email).filter(Boolean);
+
+      const { error } = await supabase.from('staff').delete().in('id', ids);
+      if (error) throw error;
+
+      if (userIds.length > 0) {
+        await supabase.from('users').delete().in('id', userIds);
+      }
+      if (emails.length > 0) {
+        await supabase.from('users').delete().in('email', emails);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `${ids.length} data staff berhasil dihapus.`
+    });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

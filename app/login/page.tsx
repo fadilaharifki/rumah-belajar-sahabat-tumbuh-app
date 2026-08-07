@@ -15,7 +15,7 @@ export default function LoginPage() {
     process.env.NEXT_PUBLIC_SHOW_DEMO_PRESETS === 'true' ||
     process.env.NODE_ENV === 'development';
 
-  const [email, setEmail] = useState(showDemoPresets ? 'pemilik@sahabattumbuh.id' : '');
+  const [email, setEmail] = useState(showDemoPresets ? 'pemilik@rbst.com' : '');
   const [password, setPassword] = useState(showDemoPresets ? 'admin123' : '');
 
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -64,7 +64,7 @@ export default function LoginPage() {
                 icon={Mail}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="nama@sahabattumbuh.id"
+                placeholder="nama@rbst.com"
               />
             </div>
 
@@ -112,14 +112,14 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <button
                   type="button"
-                  onClick={() => handlePresetSelect('pemilik@sahabattumbuh.id', 'admin123')}
+                  onClick={() => handlePresetSelect('pemilik@rbst.com', 'admin123')}
                   className="w-full p-2.5 rounded-xl border border-amber-300 bg-amber-50/80 hover:bg-amber-100/80 transition flex items-center justify-between text-xs font-semibold text-amber-950 cursor-pointer"
                 >
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-amber-700" />
                     <span>Admin / Pemilik</span>
                   </div>
-                  <span className="text-[10px] font-mono text-slate-600">pemilik@sahabattumbuh.id</span>
+                  <span className="text-[10px] font-mono text-slate-600">pemilik@rbst.com</span>
                 </button>
               </div>
             </>

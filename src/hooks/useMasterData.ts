@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { INITIAL_TEACHERS, INITIAL_STUDENTS } from '@/utils/seedData';
 import { apiService, StaffItem } from '@/services/apiServices';
 
 export interface Teacher {
@@ -28,8 +27,8 @@ export interface Student {
 }
 
 export const useMasterData = () => {
-  const [teachers, setTeachers] = useState<Teacher[]>(INITIAL_TEACHERS);
-  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [staff, setStaff] = useState<StaffItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 

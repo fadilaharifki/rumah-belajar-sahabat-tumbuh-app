@@ -29,7 +29,7 @@ export default function PengaturanPage() {
 
   // Profile Form States
   const [fullName, setFullName] = useState(user?.full_name || 'Pengguna');
-  const [email, setEmail] = useState(user?.email || 'user@sahabattumbuh.id');
+  const [email, setEmail] = useState(user?.email || 'user@rbst.com');
   const [phone, setPhone] = useState('081122334455');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
 

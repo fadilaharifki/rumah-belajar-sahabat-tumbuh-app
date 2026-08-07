@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { getGuaranteedUniqueEmail } from '@/utils/emailUtils';
+import { supabase, supabaseAuthAdmin } from '@/lib/supabaseClient';
 
 const isSupabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const targetEmail = email ? email.toLowerCase().trim() : `wali.${Date.now()}@sahabattumbuh.id`;
+    const targetEmail = await getGuaranteedUniqueEmail(email, name, 'wali');
     const randomPassword = `Wli${Math.random().toString(36).slice(-6)}!`;
 
     if (isSupabaseConfigured) {
@@ -154,6 +155,46 @@ export async function POST(request: Request) {
     };
 
     return NextResponse.json({ success: true, data: mockWali, note: 'Mock mode' });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+// DELETE /api/wali - Bulk delete parents by array of IDs { ids: string[] }
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    const { ids } = body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ success: false, error: 'Daftar ID wali wajib diisi!' }, { status: 400 });
+    }
+
+    if (isSupabaseConfigured) {
+      // Fetch parents to get user_ids or emails for cascading deletion
+      const { data: parentsToDelete } = await supabase
+        .from('parents')
+        .select('id, user_id, email')
+        .in('id', ids);
+
+      const userIds = (parentsToDelete || []).map((p) => p.user_id).filter(Boolean);
+      const emails = (parentsToDelete || []).map((p) => p.email).filter(Boolean);
+
+      const { error } = await supabase.from('parents').delete().in('id', ids);
+      if (error) throw error;
+
+      if (userIds.length > 0) {
+        await supabase.from('users').delete().in('id', userIds);
+      }
+      if (emails.length > 0) {
+        await supabase.from('users').delete().in('email', emails);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `${ids.length} data wali berhasil dihapus.`
+    });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

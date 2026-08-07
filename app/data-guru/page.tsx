@@ -12,13 +12,14 @@ import {
   ColumnDef,
   SortingState
 } from '@tanstack/react-table';
-import { Users, UserCheck, Plus, Search, Mail, Phone, ArrowUpDown, ChevronRight, Eye, Edit3, Trash2, X, Key, Copy, Check, AlertTriangle, MessageCircle, UserPlus } from 'lucide-react';
+import { Users, UserCheck, Plus, Search, Mail, Phone, ArrowUpDown, ChevronRight, Eye, Edit3, Trash2, X, Key, Copy, Check, AlertTriangle, MessageCircle, UserPlus, CheckSquare } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import {
   useGuruQuery,
   useCreateGuruMutation,
   useUpdateGuruMutation,
   useDeleteGuruMutation,
+  useBulkDeleteGuruMutation,
   TeacherItem
 } from '@/hooks/queries/useGuruQueries';
 import { useAbility } from '@/hooks/useAbility';
@@ -51,6 +52,25 @@ export default function DataGuruPage() {
   const createGuruMutation = useCreateGuruMutation();
   const updateGuruMutation = useUpdateGuruMutation();
   const deleteGuruMutation = useDeleteGuruMutation();
+  const bulkDeleteGuruMutation = useBulkDeleteGuruMutation();
+
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+
+  const toggleSelectAll = (allList: TeacherItem[]) => {
+    if (selectedIds.length === allList.length && allList.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(allList.map((t) => t.id));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
 
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -81,6 +101,25 @@ export default function DataGuruPage() {
   const [editRate, setEditRate] = useState(85000);
   const [editPhoto, setEditPhoto] = useState('');
   const [editSubjects, setEditSubjects] = useState('');
+
+  const generateSlugEmail = (nameStr: string) => {
+    const clean = nameStr
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, '')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .join('.');
+    return clean ? `${clean}@rbst.com` : '';
+  };
+
+  const handleNameChange = (val: string) => {
+    setTName(val);
+    const autoEmail = generateSlugEmail(val);
+    if (autoEmail) setTEmail(autoEmail);
+  };
 
   const handleTeacherSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,8 +220,38 @@ export default function DataGuruPage() {
     setEditingGuru(null);
   };
 
-  const columns = useMemo<ColumnDef<TeacherItem>[]>(
-    () => [
+  const columns = useMemo<ColumnDef<TeacherItem>[]>(() => {
+    const cols: ColumnDef<TeacherItem>[] = [];
+
+    if (isBulkMode) {
+      cols.push({
+        id: 'select',
+        header: () => (
+          <input
+            type="checkbox"
+            checked={teachers.length > 0 && selectedIds.length === teachers.length}
+            onChange={() => toggleSelectAll(teachers)}
+            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+          />
+        ),
+        cell: ({ row }) => (
+          <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(row.original.id)}
+              onChange={(e) => {
+                e.stopPropagation();
+                toggleSelectOne(row.original.id);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+            />
+          </div>
+        )
+      });
+    }
+
+    cols.push(
       {
         accessorKey: 'name',
         header: ({ column }) => (
@@ -314,9 +383,11 @@ export default function DataGuruPage() {
           </div>
         )
       }
-    ],
-    [router, deleteGuruMutation, can]
-  );
+    );
+    return cols;
+  },
+  [router, deleteGuruMutation, can, isBulkMode, selectedIds, teachers]
+);
 
   const table = useReactTable({
     data: teachers,
@@ -367,12 +438,75 @@ export default function DataGuruPage() {
           </div>
 
           {can('create', 'guru') && (
-            <Button variant="primary" size="sm" onClick={() => setIsFormOpen(!isFormOpen)} className="shadow-xs text-xs font-bold h-9 px-4 rounded-xl shrink-0">
-              <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Guru
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (isBulkMode) {
+                    setIsBulkMode(false);
+                    setSelectedIds([]);
+                  } else {
+                    setIsBulkMode(true);
+                  }
+                }}
+                className={`shadow-xs text-xs font-bold h-9 px-3 rounded-xl shrink-0 ${
+                  isBulkMode
+                    ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <CheckSquare className="w-3.5 h-3.5 mr-1" />
+                {isBulkMode ? 'Tutup Mode Massal' : 'Pilih Massal'}
+              </Button>
+
+              <Button variant="primary" size="sm" onClick={() => setIsFormOpen(!isFormOpen)} className="shadow-xs text-xs font-bold h-9 px-4 rounded-xl shrink-0">
+                <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Guru
+              </Button>
+            </div>
           )}
         </div>
       </div>
+
+      {/* Bulk Delete Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-3.5 flex items-center justify-between shadow-lg shadow-rose-100/50 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-xs">
+              {selectedIds.length}
+            </div>
+            <div>
+              <div className="text-xs font-bold text-rose-950">
+                {selectedIds.length} data guru terpilih
+              </div>
+              <div className="text-[11px] text-rose-600 font-medium">
+                Klik hapus untuk menghapus data guru terpilih secara bersamaan.
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds([])}
+              className="text-slate-600 hover:text-slate-900 text-xs"
+            >
+              Batal Pilih
+            </Button>
+            {can('delete', 'guru') && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setIsBulkDeleteModalOpen(true)}
+                className="font-bold text-xs gap-1.5 shadow-md shadow-rose-200"
+              >
+                <Trash2 className="w-4 h-4" />
+                Hapus {selectedIds.length} Guru Terpilih
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 1. REUSABLE MODAL: RESET PASSWORD GURU */}
       <Modal
@@ -471,48 +605,56 @@ export default function DataGuruPage() {
         )}
       </Modal>
 
-      {/* 4. REUSABLE MODAL: TAMBAH GURU BARU */}
+      {/* 4. REUSABLE MODAL: TAMBAH GURU */}
       <Modal
         isOpen={isFormOpen && can('create', 'guru')}
         onClose={() => setIsFormOpen(false)}
         title="Tambah Guru Pengajar Baru"
         icon={UserPlus}
-        maxWidth="3xl"
+        maxWidth="lg"
       >
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-6 items-center">
-            <ImageUpload currentImageUrl={tPhoto} onImageUploaded={setTPhoto} onUploadingChange={setIsUploadingPhoto} />
-            <form onSubmit={handleTeacherSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+          <div className="flex justify-center pb-2 border-b border-slate-100">
+            <ImageUpload name={tName} currentImageUrl={tPhoto} onImageUploaded={setTPhoto} onUploadingChange={setIsUploadingPhoto} />
+          </div>
+
+          <form onSubmit={handleTeacherSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label required>Nama Lengkap & Gelar:</Label>
-                <Input required value={tName} onChange={(e) => setTName(e.target.value)} placeholder="Siti Nurhaliza, S.Pd." disabled={isUploadingPhoto} />
+                <Label required>Nama Lengkap & Gelar</Label>
+                <Input required value={tName} onChange={(e) => handleNameChange(e.target.value)} placeholder="Siti Nurhaliza, S.Pd." disabled={isUploadingPhoto} />
               </div>
+
               <div>
-                <Label required>Email Akun Guru:</Label>
-                <Input required type="email" value={tEmail} onChange={(e) => setTEmail(e.target.value)} placeholder="guru@sahabattumbuh.id" disabled={isUploadingPhoto} />
+                <Label required>Email Akun Guru</Label>
+                <Input required type="email" value={tEmail} onChange={(e) => setTEmail(e.target.value)} placeholder="guru@rbst.com" disabled={isUploadingPhoto} />
               </div>
+
               <div>
-                <Label required>No. WhatsApp / HP:</Label>
+                <Label required>No. WhatsApp / HP</Label>
                 <Input required type="number" value={tPhone} onChange={(e) => setTPhone(e.target.value)} placeholder="081234567890" disabled={isUploadingPhoto} />
               </div>
+
               <div>
-                <Label required>Tarif Honor Per Sesi:</Label>
+                <Label required>Tarif Honor Per Sesi</Label>
                 <Input required type="currency" value={tRate} onChange={(e) => setTRate(Number(e.target.value))} placeholder="85.000" disabled={isUploadingPhoto} />
               </div>
-              <div className="sm:col-span-2">
-                <Label>Bidang / Subjek Mengajar (Pisahkan Komma):</Label>
-                <Input value={tSubjects} onChange={(e) => setTSubjects(e.target.value)} placeholder="Matematika, IPA, Bahasa Indonesia" disabled={isUploadingPhoto} />
-              </div>
-              <div className="sm:col-span-2 flex justify-end gap-2 pt-3 border-t border-slate-100">
-                <Button variant="outline" size="sm" type="button" onClick={() => setIsFormOpen(false)} disabled={isUploadingPhoto} className="h-9 px-4 text-xs font-bold rounded-xl">
-                  Batal
-                </Button>
-                <Button variant="primary" size="sm" type="submit" disabled={createGuruMutation.isPending || isUploadingPhoto} className="h-9 px-5 text-xs font-bold rounded-xl shadow-md">
-                  {isUploadingPhoto ? 'Mengunggah Foto...' : createGuruMutation.isPending ? 'Menyimpan...' : 'Simpan Guru Baru'}
-                </Button>
-              </div>
-            </form>
-          </div>
+            </div>
+
+            <div>
+              <Label>Bidang / Subjek Mengajar (Pisahkan Komma)</Label>
+              <Input value={tSubjects} onChange={(e) => setTSubjects(e.target.value)} placeholder="Matematika, IPA, Bahasa Indonesia" disabled={isUploadingPhoto} />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+              <Button variant="outline" size="sm" type="button" onClick={() => setIsFormOpen(false)} disabled={isUploadingPhoto} className="h-9 px-4 text-xs font-bold rounded-xl">
+                Batal
+              </Button>
+              <Button variant="primary" size="sm" type="submit" disabled={createGuruMutation.isPending || isUploadingPhoto} className="h-9 px-5 text-xs font-bold rounded-xl shadow-md">
+                {isUploadingPhoto ? 'Mengunggah Foto...' : createGuruMutation.isPending ? 'Menyimpan...' : 'Simpan Guru Baru'}
+              </Button>
+            </div>
+          </form>
         </div>
       </Modal>
 
@@ -522,34 +664,42 @@ export default function DataGuruPage() {
         onClose={() => !isUploadingPhoto && setEditingGuru(null)}
         title="Edit Data Guru Pengajar"
         icon={Edit3}
-        maxWidth="3xl"
+        maxWidth="lg"
       >
         <div className="space-y-4">
-          <ImageUpload currentImageUrl={editPhoto} onImageUploaded={setEditPhoto} onUploadingChange={setIsUploadingPhoto} />
+          <div className="flex justify-center pb-2 border-b border-slate-100">
+            <ImageUpload name={editName} currentImageUrl={editPhoto} onImageUploaded={setEditPhoto} onUploadingChange={setIsUploadingPhoto} />
+          </div>
 
           <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div>
-              <Label required>Nama Lengkap & Gelar:</Label>
-              <Input required value={editName} onChange={(e) => setEditName(e.target.value)} disabled={isUploadingPhoto} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label required>Nama Lengkap & Gelar</Label>
+                <Input required value={editName} onChange={(e) => setEditName(e.target.value)} disabled={isUploadingPhoto} />
+              </div>
+
+              <div>
+                <Label required>Email Akun</Label>
+                <Input required type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} disabled={isUploadingPhoto} />
+              </div>
+
+              <div>
+                <Label required>No. WhatsApp / HP</Label>
+                <Input required type="number" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} disabled={isUploadingPhoto} />
+              </div>
+
+              <div>
+                <Label required>Honor Per Sesi</Label>
+                <Input required type="currency" value={editRate} onChange={(e) => setEditRate(Number(e.target.value))} disabled={isUploadingPhoto} />
+              </div>
             </div>
+
             <div>
-              <Label required>Email Akun:</Label>
-              <Input required type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} disabled={isUploadingPhoto} />
-            </div>
-            <div>
-              <Label required>No. WhatsApp / HP:</Label>
-              <Input required type="number" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} disabled={isUploadingPhoto} />
-            </div>
-            <div>
-              <Label required>Honor Per Sesi:</Label>
-              <Input required type="currency" value={editRate} onChange={(e) => setEditRate(Number(e.target.value))} disabled={isUploadingPhoto} />
-            </div>
-            <div>
-              <Label>Bidang Mengajar (Pisahkan Komma):</Label>
+              <Label>Bidang Mengajar (Pisahkan Komma)</Label>
               <Input value={editSubjects} onChange={(e) => setEditSubjects(e.target.value)} disabled={isUploadingPhoto} />
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
               <Button variant="outline" size="sm" type="button" onClick={() => setEditingGuru(null)} disabled={isUploadingPhoto} className="h-9 px-4 text-xs font-bold rounded-xl">
                 Batal
               </Button>
@@ -586,11 +736,19 @@ export default function DataGuruPage() {
               <tbody className="divide-y divide-slate-100 text-xs font-medium">
                 {table.getRowModel().rows.length > 0 ? (
                   table.getRowModel().rows.map((row) => (
-                    <tr
-                      key={row.id}
-                      onClick={() => router.push(`/data-guru/${row.original.id}`)}
-                      className="hover:bg-emerald-50/40 cursor-pointer transition group"
-                    >
+                      <tr
+                        key={row.id}
+                        onClick={() => {
+                          if (isBulkMode) {
+                            toggleSelectOne(row.original.id);
+                          } else {
+                            router.push(`/data-guru/${row.original.id}`);
+                          }
+                        }}
+                        className={`hover:bg-emerald-50/40 cursor-pointer transition group ${
+                          selectedIds.includes(row.original.id) ? 'bg-emerald-50/60' : ''
+                        }`}
+                      >
                       {row.getVisibleCells().map((cell) => (
                         <td key={cell.id} className="px-3.5 py-2.5 align-middle">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -612,6 +770,38 @@ export default function DataGuruPage() {
           <TablePagination table={table} />
         </Card>
       )}
+
+      {/* BULK DELETE MODAL */}
+      <Modal
+        isOpen={isBulkDeleteModalOpen}
+        onClose={() => setIsBulkDeleteModalOpen(false)}
+        title="Konfirmasi Hapus Banyak Guru"
+        icon={AlertTriangle}
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Apakah Anda yakin ingin menghapus <strong className="text-slate-900">{selectedIds.length} data guru</strong> terpilih?
+            Tindakan ini akan menghapus data guru dan akun penggunanya secara permanen.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="ghost" onClick={() => setIsBulkDeleteModalOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              disabled={bulkDeleteGuruMutation.isPending}
+              onClick={async () => {
+                await bulkDeleteGuruMutation.mutateAsync(selectedIds);
+                setSelectedIds([]);
+                setIsBulkDeleteModalOpen(false);
+              }}
+            >
+              {bulkDeleteGuruMutation.isPending ? 'Menghapus...' : `Ya, Hapus ${selectedIds.length} Guru`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
