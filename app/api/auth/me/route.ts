@@ -23,7 +23,7 @@ export async function GET(request: Request) {
         user: {
           id: 'admin-1',
           full_name: 'Ibu Nurul (Pemilik / Admin)',
-          email: paramEmail || 'pemilik@sahabattumbuh.id',
+          email: paramEmail || 'pemilik@rbst.com',
           role: paramEmail?.includes('wali') ? 'parent' : paramEmail?.includes('guru') ? 'teacher' : 'admin',
           role_id: DEFAULT_ADMIN_ROLE_UUID,
           avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80'
@@ -86,7 +86,7 @@ export async function GET(request: Request) {
       user: {
         id: dbUser?.auth_user_id || dbUser?.id || `usr-${Date.now()}`,
         full_name: fullName,
-        email: supaEmail || 'pemilik@sahabattumbuh.id',
+        email: supaEmail || 'pemilik@rbst.com',
         role: roleStr,
         role_id: roleId,
         teacher_id: teacherId,

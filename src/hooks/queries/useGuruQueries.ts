@@ -185,3 +185,30 @@ export function useDeleteGuruMutation() {
     }
   });
 }
+
+// Hook for bulk deleting Guru by array of IDs
+export function useBulkDeleteGuruMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await fetch('/api/guru', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Gagal menghapus data guru terpilih.');
+      }
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: GURU_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.error(data?.message || 'Data guru terpilih berhasil dihapus.');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal menghapus data guru terpilih!');
+    }
+  });
+}

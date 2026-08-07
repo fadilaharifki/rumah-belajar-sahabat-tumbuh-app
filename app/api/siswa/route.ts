@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getGuaranteedUniqueEmail } from '@/utils/emailUtils';
 import { supabase, supabaseAuthAdmin } from '@/lib/supabaseClient';
 
 const isSupabaseConfigured = Boolean(
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
     if (isSupabaseConfigured) {
       // 1. If new_parent details are passed, create parent record & Supabase auth account first
       if (new_parent_name && new_parent_phone) {
-        const targetEmail = `wali.${Math.random().toString(36).slice(-6)}@sahabattumbuh.id`;
+        const targetEmail = await getGuaranteedUniqueEmail(null, name, 'wali');
         const randomPassword = `Wli${Math.random().toString(36).slice(-6)}!`;
 
         const { data: authData } = await supabaseAuthAdmin.auth.signUp({
@@ -204,6 +205,30 @@ export async function POST(request: Request) {
     };
 
     return NextResponse.json({ success: true, data: mockStudent, note: 'Mock mode' });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+// DELETE /api/siswa - Bulk delete students by array of IDs { ids: string[] }
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    const { ids } = body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ success: false, error: 'Daftar ID siswa wajib diisi!' }, { status: 400 });
+    }
+
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('students').delete().in('id', ids);
+      if (error) throw error;
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `${ids.length} data siswa berhasil dihapus.`
+    });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

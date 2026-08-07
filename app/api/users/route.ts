@@ -6,35 +6,52 @@ const isSupabaseConfigured = Boolean(
   !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
 );
 
-// GET /api/users - Fetch all users from public.users joined with roles
-export async function GET() {
+// GET /api/users - Fetch users from public.users with optional category/role_id filter
+export async function GET(request: Request) {
   if (!isSupabaseConfigured) {
     return NextResponse.json({ data: [], source: 'mock' });
   }
 
   try {
-    const { data, error } = await supabase
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get('category');
+    const roleId = searchParams.get('role_id');
+
+    let query = supabase
       .from('users')
       .select('*, roles(name)')
       .order('created_at', { ascending: false });
+
+    if (category && category !== 'all') {
+      query = query.eq('category', category);
+    }
+    if (roleId && roleId !== 'all') {
+      query = query.eq('role_id', roleId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.warn('Supabase users query error:', error.message);
       return NextResponse.json({ data: [], source: 'error', error: error.message });
     }
 
-    const formatted = (data || []).map((u: any) => ({
-      id: u.id,
-      name: u.full_name,
-      email: u.email,
-      phone: u.phone,
-      avatar_url: u.avatar_url,
-      category: u.category,
-      role_id: u.role_id,
-      role_name: u.roles?.name || u.category || 'Pengguna System',
-      status: u.status || 'Aktif',
-      created_at: u.created_at
-    }));
+    const formatted = (data || []).map((u: any) => {
+      const name = u.full_name || u.name || (u.email ? u.email.split('@')[0] : 'Pengguna');
+      return {
+        id: u.id,
+        name: name,
+        full_name: name,
+        email: u.email,
+        phone: u.phone,
+        avatar_url: u.avatar_url || '',
+        category: u.category || 'Pengguna',
+        role_id: u.role_id,
+        role_name: u.roles?.name || u.category || 'Pengguna System',
+        status: u.status || 'Aktif',
+        created_at: u.created_at
+      };
+    });
 
     return NextResponse.json({ data: formatted, source: 'supabase' });
   } catch (err: any) {

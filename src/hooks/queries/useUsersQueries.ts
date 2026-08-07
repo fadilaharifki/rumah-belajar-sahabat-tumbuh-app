@@ -28,12 +28,17 @@ export interface UpdateUserPayload {
   status?: string;
 }
 
-// Custom Hook for Fetching User Accounts (Fresh live fetching, staleTime = 0)
-export const useUsersQuery = () => {
+// Custom Hook for Fetching User Accounts with optional BE filters
+export const useUsersQuery = (category?: string, roleId?: string) => {
   return useQuery<UserAccountItem[]>({
-    queryKey: ['users'],
+    queryKey: ['users', category || 'all', roleId || 'all'],
     queryFn: async () => {
-      const res = await fetch('/api/users');
+      const params = new URLSearchParams();
+      if (category && category !== 'all') params.append('category', category);
+      if (roleId && roleId !== 'all') params.append('role_id', roleId);
+
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+      const res = await fetch(`/api/users${queryString}`);
       if (!res.ok) throw new Error('Gagal mengambil daftar pengguna');
       const json = await res.json();
       return json.data || [];

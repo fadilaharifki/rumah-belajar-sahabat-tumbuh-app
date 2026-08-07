@@ -131,3 +131,30 @@ export function useDeleteStaffMutation() {
     }
   });
 }
+
+// Hook for bulk deleting Staff members by array of IDs
+export function useBulkDeleteStaffMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await fetch('/api/staff', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Gagal menghapus data staff terpilih.');
+      }
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: STAFF_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.error(data?.message || 'Data staff terpilih berhasil dihapus.');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal menghapus data staff terpilih!');
+    }
+  });
+}
