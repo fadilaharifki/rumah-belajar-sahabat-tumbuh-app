@@ -16,12 +16,17 @@ export interface TeacherItem {
 
 export const GURU_QUERY_KEY = ['guru'];
 
-// Hook for fetching all Teachers with staleTime: 0
-export function useGuruQuery() {
+// Hook for fetching all Teachers with BE sorting support
+export function useGuruQuery(sortBy?: string, sortOrder?: 'asc' | 'desc') {
   return useQuery<TeacherItem[]>({
-    queryKey: GURU_QUERY_KEY,
+    queryKey: ['guru', sortBy || '', sortOrder || ''],
     queryFn: async () => {
-      const res = await fetch('/api/guru');
+      const params = new URLSearchParams();
+      if (sortBy) params.append('sort_by', sortBy);
+      if (sortOrder) params.append('sort_order', sortOrder);
+      const queryStr = params.toString() ? `?${params.toString()}` : '';
+
+      const res = await fetch(`/api/guru${queryStr}`);
       if (!res.ok) throw new Error('Gagal mengambil data guru');
       const json = await res.json();
       return json.data || [];

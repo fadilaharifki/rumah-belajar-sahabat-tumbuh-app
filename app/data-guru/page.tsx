@@ -12,8 +12,7 @@ import {
   ColumnDef,
   SortingState
 } from '@tanstack/react-table';
-import { Users, UserCheck, Plus, Search, Mail, Phone, ArrowUpDown, ChevronRight, Eye, Edit3, Trash2, X, Key, Copy, Check, AlertTriangle, MessageCircle, UserPlus, CheckSquare } from 'lucide-react';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { UserCheck, Plus, Search, Phone, Mail, Edit3, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronRight, Eye, Key, Copy, Check, MessageCircle, AlertTriangle, UserPlus, CheckSquare } from 'lucide-react';
 import {
   useGuruQuery,
   useCreateGuruMutation,
@@ -22,6 +21,7 @@ import {
   useBulkDeleteGuruMutation,
   TeacherItem
 } from '@/hooks/queries/useGuruQueries';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { useAbility } from '@/hooks/useAbility';
 import { Card } from '@/components/atoms/Card';
 import { Button } from '@/components/atoms/Button';
@@ -40,6 +40,10 @@ export default function DataGuruPage() {
   const { user } = useAuthStore();
   const { can } = useAbility();
 
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const activeSortBy = sorting[0]?.id;
+  const activeSortOrder = sorting[0] ? (sorting[0].desc ? 'desc' : 'asc') : undefined;
+
   // Role-Based Auto Redirect for Teacher to their own profile page
   useEffect(() => {
     if (user?.role === 'teacher' && user?.teacher_id) {
@@ -47,8 +51,8 @@ export default function DataGuruPage() {
     }
   }, [user, router]);
 
-  // TanStack Query Hooks for Guru
-  const { data: teachers = [], isLoading } = useGuruQuery();
+  // TanStack Query Hooks for Guru with BE sorting
+  const { data: teachers = [], isLoading } = useGuruQuery(activeSortBy, activeSortOrder);
   const createGuruMutation = useCreateGuruMutation();
   const updateGuruMutation = useUpdateGuruMutation();
   const deleteGuruMutation = useDeleteGuruMutation();
@@ -73,7 +77,6 @@ export default function DataGuruPage() {
   };
 
   const [globalFilter, setGlobalFilter] = useState('');
-  const [sorting, setSorting] = useState<SortingState>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingGuru, setEditingGuru] = useState<TeacherItem | null>(null);
 
@@ -257,9 +260,16 @@ export default function DataGuruPage() {
         header: ({ column }) => (
           <button
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700"
+            className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700 cursor-pointer"
           >
-            Foto & Nama Guru <ArrowUpDown className="w-3 h-3 ml-1" />
+            <span>Foto & Nama Guru</span>
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            )}
           </button>
         ),
         cell: (info) => (
@@ -273,7 +283,21 @@ export default function DataGuruPage() {
       },
       {
         accessorKey: 'email',
-        header: 'Kontak (Email & WhatsApp)',
+        header: ({ column }) => (
+          <button
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700 cursor-pointer"
+          >
+            <span>Kontak (Email & WA)</span>
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            )}
+          </button>
+        ),
         cell: (info) => (
           <div className="space-y-0.5">
             <a
@@ -300,7 +324,21 @@ export default function DataGuruPage() {
       },
       {
         accessorKey: 'session_rate',
-        header: 'Honor Per Sesi',
+        header: ({ column }) => (
+          <button
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700 cursor-pointer"
+          >
+            <span>Honor Per Sesi</span>
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            )}
+          </button>
+        ),
         cell: (info) => (
           <span className="font-bold text-emerald-800 font-mono">
             Rp {(info.getValue() as number || 85000).toLocaleString('id-ID')}

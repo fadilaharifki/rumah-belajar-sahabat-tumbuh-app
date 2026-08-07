@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   useReactTable,
   getCoreRowModel,
@@ -11,7 +12,7 @@ import {
   ColumnDef,
   SortingState
 } from '@tanstack/react-table';
-import { HeartHandshake, Plus, Search, Phone, Mail, Edit3, Trash2, ArrowUpDown, GraduationCap, X, Key, Copy, Check, AlertTriangle, MapPin, MessageCircle, UserPlus, CheckSquare } from 'lucide-react';
+import { Users, Plus, Search, Phone, Mail, MapPin, Eye, Edit3, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Key, Copy, Check, MessageCircle, AlertTriangle, UserPlus, CheckSquare, GraduationCap, HeartHandshake } from 'lucide-react';
 import {
   useWaliQuery,
   useCreateWaliMutation,
@@ -34,10 +35,15 @@ import { ImageUpload } from '@/components/molecules/ImageUpload';
 import { formatWaUrl } from '@/utils/formatters';
 
 export default function DataWaliPage() {
+  const router = useRouter();
   const { can } = useAbility();
 
-  // TanStack Query Hooks for Wali
-  const { data: waliList = [], isLoading } = useWaliQuery();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const activeSortBy = sorting[0]?.id;
+  const activeSortOrder = sorting[0] ? (sorting[0].desc ? 'desc' : 'asc') : undefined;
+
+  // TanStack Query Hooks for Wali with BE sorting
+  const { data: waliList = [], isLoading } = useWaliQuery(activeSortBy, activeSortOrder);
   const createWaliMutation = useCreateWaliMutation();
   const updateWaliMutation = useUpdateWaliMutation();
   const deleteWaliMutation = useDeleteWaliMutation();
@@ -62,7 +68,6 @@ export default function DataWaliPage() {
   };
 
   const [globalFilter, setGlobalFilter] = useState('');
-  const [sorting, setSorting] = useState<SortingState>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingWali, setEditingWali] = useState<WaliItem | null>(null);
 
@@ -210,9 +215,16 @@ export default function DataWaliPage() {
         header: ({ column }) => (
           <button
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700"
+            className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700 cursor-pointer"
           >
-            Nama Wali / Orang Tua <ArrowUpDown className="w-3 h-3 ml-1" />
+            <span>Nama Wali / Orang Tua</span>
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            )}
           </button>
         ),
         cell: (info) => (
@@ -230,7 +242,21 @@ export default function DataWaliPage() {
       },
       {
         accessorKey: 'phone',
-        header: 'Kontak (No. WhatsApp & Email)',
+        header: ({ column }) => (
+          <button
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700 cursor-pointer"
+          >
+            <span>Kontak (No. WA & Email)</span>
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            )}
+          </button>
+        ),
         cell: (info) => (
           <div className="space-y-0.5">
             <a

@@ -11,13 +11,14 @@ import {
   ColumnDef,
   SortingState
 } from '@tanstack/react-table';
-import { ShieldCheck, Users, Plus, Search, Mail, Phone, Edit3, Trash2, ArrowUpDown, X, Key, Copy, Check, AlertTriangle, UserPlus, CheckSquare } from 'lucide-react';
+import { ShieldCheck, Users, Plus, Search, Mail, Phone, Edit3, Trash2, ArrowUpDown, ArrowUp, ArrowDown, X, Key, Copy, Check, AlertTriangle, UserPlus, CheckSquare } from 'lucide-react';
 import {
   useStaffQuery,
   useCreateStaffMutation,
   useUpdateStaffMutation,
   useDeleteStaffMutation,
-  useBulkDeleteStaffMutation
+  useBulkDeleteStaffMutation,
+  ManagementStaffItem
 } from '@/hooks/queries/useStaffQueries';
 import { useRoleStore } from '@/stores/useRoleStore';
 import { useAbility } from '@/hooks/useAbility';
@@ -32,24 +33,16 @@ import { TablePagination } from '@/components/molecules/TablePagination';
 import { SkeletonTable } from '@/components/atoms/Skeleton';
 import { ImageUpload } from '@/components/molecules/ImageUpload';
 
-export interface ManagementStaffItem {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  avatar_url?: string;
-  role_title?: string;
-  role_name: string;
-  role_id: string;
-  status: string;
-}
-
 export default function DataStaffPage() {
   const { roles } = useRoleStore();
   const { can } = useAbility();
 
-  // TanStack Query Hooks for Staff
-  const { data: staffList = [], isLoading } = useStaffQuery();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const activeSortBy = sorting[0]?.id;
+  const activeSortOrder = sorting[0] ? (sorting[0].desc ? 'desc' : 'asc') : undefined;
+
+  // TanStack Query Hooks for Staff with BE sorting
+  const { data: staffList = [], isLoading } = useStaffQuery(activeSortBy, activeSortOrder);
   const createStaffMutation = useCreateStaffMutation();
   const updateStaffMutation = useUpdateStaffMutation();
   const deleteStaffMutation = useDeleteStaffMutation();
@@ -74,7 +67,6 @@ export default function DataStaffPage() {
   };
 
   const [globalFilter, setGlobalFilter] = useState('');
-  const [sorting, setSorting] = useState<SortingState>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<ManagementStaffItem | null>(null);
 
@@ -220,9 +212,16 @@ export default function DataStaffPage() {
         header: ({ column }) => (
           <button
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="flex items-center gap-1.5 font-semibold uppercase tracking-wider text-xs hover:text-emerald-700"
+            className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700 cursor-pointer"
           >
-            Nama Staff <ArrowUpDown className="w-3 h-3 ml-1" />
+            <span>Nama Staff</span>
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            )}
           </button>
         ),
         cell: (info) => (
@@ -236,7 +235,21 @@ export default function DataStaffPage() {
       },
       {
         accessorKey: 'email',
-        header: 'Kontak (Email & HP)',
+        header: ({ column }) => (
+          <button
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700 cursor-pointer"
+          >
+            <span>Kontak (Email & HP)</span>
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            )}
+          </button>
+        ),
         cell: (info) => (
           <div className="space-y-0.5">
             <div className="text-slate-800 font-semibold flex items-center gap-1.5">

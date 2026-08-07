@@ -15,12 +15,17 @@ export interface WaliItem {
 
 export const WALI_QUERY_KEY = ['wali'];
 
-// Hook for fetching all Wali (Parents) with staleTime: 0
-export function useWaliQuery() {
+// Hook for fetching all Wali (Parents) with BE sorting support
+export function useWaliQuery(sortBy?: string, sortOrder?: 'asc' | 'desc') {
   return useQuery<WaliItem[]>({
-    queryKey: WALI_QUERY_KEY,
+    queryKey: ['wali', sortBy || '', sortOrder || ''],
     queryFn: async () => {
-      const res = await fetch('/api/wali');
+      const params = new URLSearchParams();
+      if (sortBy) params.append('sort_by', sortBy);
+      if (sortOrder) params.append('sort_order', sortOrder);
+      const queryStr = params.toString() ? `?${params.toString()}` : '';
+
+      const res = await fetch(`/api/wali${queryStr}`);
       if (!res.ok) throw new Error('Gagal mengambil data wali siswa');
       const json = await res.json();
       return json.data || [];

@@ -10,16 +10,27 @@ const isSupabaseConfigured = Boolean(
 const GURU_ROLE_ID = '22222222-2222-2222-2222-000000000002';
 
 // GET /api/guru - Fetch all teachers joined with public.users status & avatar
-export async function GET() {
+export async function GET(request: Request) {
   if (!isSupabaseConfigured) {
     return NextResponse.json({ data: [], source: 'mock' });
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const sortBy = searchParams.get('sort_by') || 'name';
+    const isAscending = searchParams.get('sort_order') !== 'desc';
+
+    let dbSortColumn = 'name';
+    if (sortBy === 'name') dbSortColumn = 'name';
+    else if (sortBy === 'email') dbSortColumn = 'email';
+    else if (sortBy === 'phone') dbSortColumn = 'phone';
+    else if (sortBy === 'session_rate') dbSortColumn = 'session_rate';
+    else if (sortBy === 'created_at') dbSortColumn = 'created_at';
+
     const { data, error } = await supabase
       .from('teachers')
       .select('*, users(status, role_id, avatar_url)')
-      .order('name');
+      .order(dbSortColumn, { ascending: isAscending });
 
     if (error) {
       console.warn('Supabase guru query error:', error.message);

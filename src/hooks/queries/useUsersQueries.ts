@@ -28,14 +28,16 @@ export interface UpdateUserPayload {
   status?: string;
 }
 
-// Custom Hook for Fetching User Accounts with optional BE filters
-export const useUsersQuery = (category?: string, roleId?: string) => {
+// Custom Hook for Fetching User Accounts with optional BE filters & sorting
+export const useUsersQuery = (category?: string, roleId?: string, sortBy?: string, sortOrder?: 'asc' | 'desc') => {
   return useQuery<UserAccountItem[]>({
-    queryKey: ['users', category || 'all', roleId || 'all'],
+    queryKey: ['users', category || 'all', roleId || 'all', sortBy || '', sortOrder || ''],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (category && category !== 'all') params.append('category', category);
       if (roleId && roleId !== 'all') params.append('role_id', roleId);
+      if (sortBy) params.append('sort_by', sortBy);
+      if (sortOrder) params.append('sort_order', sortOrder);
 
       const queryString = params.toString() ? `?${params.toString()}` : '';
       const res = await fetch(`/api/users${queryString}`);

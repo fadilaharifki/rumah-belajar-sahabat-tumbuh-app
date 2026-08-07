@@ -10,16 +10,27 @@ const isSupabaseConfigured = Boolean(
 const WALI_ROLE_ID = '33333333-3333-3333-3333-000000000003';
 
 // GET /api/wali - Fetch all parents joined with children count & public.users avatar/status
-export async function GET() {
+export async function GET(request: Request) {
   if (!isSupabaseConfigured) {
     return NextResponse.json({ data: [], source: 'mock' });
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const sortBy = searchParams.get('sort_by') || 'name';
+    const isAscending = searchParams.get('sort_order') !== 'desc';
+
+    let dbSortColumn = 'name';
+    if (sortBy === 'name') dbSortColumn = 'name';
+    else if (sortBy === 'email') dbSortColumn = 'email';
+    else if (sortBy === 'phone') dbSortColumn = 'phone';
+    else if (sortBy === 'address') dbSortColumn = 'address';
+    else if (sortBy === 'created_at') dbSortColumn = 'created_at';
+
     const { data: parents, error } = await supabase
       .from('parents')
       .select('*, students(id, name), users(status, role_id, avatar_url)')
-      .order('name');
+      .order(dbSortColumn, { ascending: isAscending });
 
     if (error) {
       console.warn('Supabase wali query error:', error.message);

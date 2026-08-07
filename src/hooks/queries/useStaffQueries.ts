@@ -15,12 +15,17 @@ export interface ManagementStaffItem {
 
 export const STAFF_QUERY_KEY = ['staff'];
 
-// Hook for fetching all Staff Management members with staleTime: 0
-export function useStaffQuery() {
+// Hook for fetching all Staff Management members with BE sorting support
+export function useStaffQuery(sortBy?: string, sortOrder?: 'asc' | 'desc') {
   return useQuery<ManagementStaffItem[]>({
-    queryKey: STAFF_QUERY_KEY,
+    queryKey: ['staff', sortBy || '', sortOrder || ''],
     queryFn: async () => {
-      const res = await fetch('/api/staff');
+      const params = new URLSearchParams();
+      if (sortBy) params.append('sort_by', sortBy);
+      if (sortOrder) params.append('sort_order', sortOrder);
+      const queryStr = params.toString() ? `?${params.toString()}` : '';
+
+      const res = await fetch(`/api/staff${queryStr}`);
       if (!res.ok) throw new Error('Gagal mengambil data staff');
       const json = await res.json();
       return json.data || [];
