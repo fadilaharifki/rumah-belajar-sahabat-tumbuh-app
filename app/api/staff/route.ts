@@ -10,16 +10,27 @@ const isSupabaseConfigured = Boolean(
 const STAFF_ROLE_ID = '44444444-4444-4444-4444-000000000004';
 
 // GET /api/staff - Fetch all staff members joined with public.users status & avatar
-export async function GET() {
+export async function GET(request: Request) {
   if (!isSupabaseConfigured) {
     return NextResponse.json({ data: [], source: 'mock' });
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const sortBy = searchParams.get('sort_by') || 'name';
+    const isAscending = searchParams.get('sort_order') !== 'desc';
+
+    let dbSortColumn = 'name';
+    if (sortBy === 'name') dbSortColumn = 'name';
+    else if (sortBy === 'email') dbSortColumn = 'email';
+    else if (sortBy === 'phone') dbSortColumn = 'phone';
+    else if (sortBy === 'role_title') dbSortColumn = 'role_title';
+    else if (sortBy === 'created_at') dbSortColumn = 'created_at';
+
     const { data, error } = await supabase
       .from('staff')
       .select('*, users(status, role_id, avatar_url)')
-      .order('name');
+      .order(dbSortColumn, { ascending: isAscending });
 
     if (error) {
       console.warn('Supabase staff query error:', error.message);

@@ -16,12 +16,17 @@ export interface StudentItem {
 
 export const SISWA_QUERY_KEY = ['siswa'];
 
-// Hook for fetching all Siswa (Students) with staleTime: 0
-export function useSiswaQuery() {
+// Hook for fetching all Siswa (Students) with BE sorting support
+export function useSiswaQuery(sortBy?: string, sortOrder?: 'asc' | 'desc') {
   return useQuery<StudentItem[]>({
-    queryKey: SISWA_QUERY_KEY,
+    queryKey: ['siswa', sortBy || '', sortOrder || ''],
     queryFn: async () => {
-      const res = await fetch('/api/siswa');
+      const params = new URLSearchParams();
+      if (sortBy) params.append('sort_by', sortBy);
+      if (sortOrder) params.append('sort_order', sortOrder);
+      const queryStr = params.toString() ? `?${params.toString()}` : '';
+
+      const res = await fetch(`/api/siswa${queryStr}`);
       if (!res.ok) throw new Error('Gagal mengambil data siswa');
       const json = await res.json();
       return json.data || [];

@@ -11,7 +11,7 @@ import {
   ColumnDef,
   SortingState
 } from '@tanstack/react-table';
-import { ShieldCheck, Plus, Search, Check, Edit3, Trash2, ArrowUpDown, X, Folder, CheckSquare, Square, Save } from 'lucide-react';
+import { ShieldCheck, Plus, Search, Check, Edit3, Trash2, ArrowUpDown, ArrowUp, ArrowDown, X, Folder, CheckSquare, Square, Save } from 'lucide-react';
 import {
   useRolesQuery,
   useCreateRoleMutation,
@@ -217,9 +217,16 @@ export default function ManajemenPeranPage() {
         header: ({ column }) => (
           <button
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="flex items-center gap-1.5 font-semibold uppercase tracking-wider text-xs hover:text-emerald-700"
+            className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700 cursor-pointer"
           >
-            Nama Peran (Role) <ArrowUpDown className="w-3 h-3 ml-1" />
+            <span>Nama Peran (Role)</span>
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-emerald-600 font-bold" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-emerald-600 font-bold" />
+            ) : (
+              <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            )}
           </button>
         ),
         cell: (info) => (
@@ -326,7 +333,53 @@ export default function ManajemenPeranPage() {
             <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Role
           </Button>
         </div>
-      </div>      {/* 1. REUSABLE MODAL: BUAT ROLE KUSTOM BARU */}
+      </div>
+
+      {/* TanStack Table dengan Skeleton State */}
+      {isLoading ? (
+        <SkeletonTable rows={5} />
+      ) : (
+        <Card className="p-0 overflow-hidden bg-white shadow-sm border border-slate-200">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id} className="bg-slate-50 border-b border-slate-200">
+                    {headerGroup.headers.map((header) => (
+                      <th key={header.id} className="px-3.5 py-2.5 text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {table.getRowModel().rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={columns.length} className="text-center py-8 text-slate-400 font-medium">
+                      Belum ada data peran ditemukan.
+                    </td>
+                  </tr>
+                ) : (
+                  table.getRowModel().rows.map((row) => (
+                    <tr key={row.id} className="hover:bg-slate-50/80 transition">
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id} className="px-3.5 py-2.5">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <TablePagination table={table} />
+        </Card>
+      )}
       <Modal
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}

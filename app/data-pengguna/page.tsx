@@ -12,7 +12,7 @@ import {
   SortingState,
   RowSelectionState
 } from '@tanstack/react-table';
-import { UserCheck, Search, Mail, ArrowUpDown, Check, Power, ShieldAlert, Filter } from 'lucide-react';
+import { UserCheck, Search, Mail, ArrowUpDown, ArrowUp, ArrowDown, Check, Power, ShieldAlert, Filter } from 'lucide-react';
 import { useRoleStore } from '@/stores/useRoleStore';
 import {
   useUsersQuery,
@@ -34,13 +34,15 @@ export default function DataPenggunaPage() {
 
   // Backend Filter State (hits BE API /api/users?category=...)
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const activeSortBy = sorting[0]?.id;
+  const activeSortOrder = sorting[0] ? (sorting[0].desc ? 'desc' : 'asc') : undefined;
 
-  // TanStack Query Hooks with live BE filtering
-  const { data: usersList = [], isLoading, isFetching } = useUsersQuery(selectedCategory);
+  // TanStack Query Hooks with live BE filtering & sorting
+  const { data: usersList = [], isLoading, isFetching } = useUsersQuery(selectedCategory, undefined, activeSortBy, activeSortOrder);
   const updateUserMutation = useUpdateUserMutation();
 
   const [globalFilter, setGlobalFilter] = useState('');
-  const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   // Bulk Assign Target Role State
@@ -100,9 +102,16 @@ export default function DataPenggunaPage() {
         header: ({ column }) => (
           <button
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="flex items-center gap-1.5 font-semibold uppercase tracking-wider text-xs hover:text-emerald-700"
+            className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700 cursor-pointer"
           >
-            Nama & Email Pengguna <ArrowUpDown className="w-3 h-3 ml-1" />
+            <span>Nama & Email Pengguna</span>
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            )}
           </button>
         ),
         cell: (info) => {
@@ -124,7 +133,21 @@ export default function DataPenggunaPage() {
       },
       {
         accessorKey: 'category',
-        header: 'Kategori Entitas',
+        header: ({ column }) => (
+          <button
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700 cursor-pointer"
+          >
+            <span>Kategori Entitas</span>
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            )}
+          </button>
+        ),
         cell: (info) => (
           <Badge variant={info.getValue() === 'Pemilik' ? 'amber' : 'emerald'} size="sm">
             {info.getValue() as string}
@@ -148,7 +171,21 @@ export default function DataPenggunaPage() {
       },
       {
         accessorKey: 'status',
-        header: () => <div className="text-center">Status & Kontrol Akun</div>,
+        header: ({ column }) => (
+          <button
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700 cursor-pointer w-full text-center"
+          >
+            <span>Status Akun</span>
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            )}
+          </button>
+        ),
         cell: (info) => {
           const isAktif = info.getValue() === 'Aktif';
           return (

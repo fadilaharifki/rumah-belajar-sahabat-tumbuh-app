@@ -12,11 +12,7 @@ import {
   ColumnDef,
   SortingState
 } from '@tanstack/react-table';
-import {
-  GraduationCap, Plus, Search, Phone, Edit3, Trash2, ArrowUpDown,
-  ChevronRight, Eye, User, X, AlertTriangle, MessageCircle, ArrowDown, UserPlus, CheckSquare
-} from 'lucide-react';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { ShieldCheck, UserPlus, Search, Phone, Eye, Edit3, Trash2, ArrowUpDown, ArrowUp, ArrowDown, User, CheckSquare, AlertTriangle, ChevronRight, Filter, GraduationCap, Plus } from 'lucide-react';
 import {
   useSiswaQuery,
   useInfiniteSiswaQuery,
@@ -27,6 +23,7 @@ import {
   StudentItem
 } from '@/hooks/queries/useSiswaQueries';
 import { useWaliQuery } from '@/hooks/queries/useWaliQueries';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { useAbility } from '@/hooks/useAbility';
 import { Card } from '@/components/atoms/Card';
 import { Button } from '@/components/atoms/Button';
@@ -46,8 +43,12 @@ export default function DataSiswaPage() {
   const { user } = useAuthStore();
   const { can } = useAbility();
 
-  // TanStack Query Hooks for Siswa & Wali
-  const { data: allStudents = [], isLoading } = useSiswaQuery();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const activeSortBy = sorting[0]?.id;
+  const activeSortOrder = sorting[0] ? (sorting[0].desc ? 'desc' : 'asc') : undefined;
+
+  // TanStack Query Hooks for Siswa & Wali with BE sorting
+  const { data: allStudents = [], isLoading } = useSiswaQuery(activeSortBy, activeSortOrder);
   const {
     data: infiniteData,
     fetchNextPage,
@@ -70,7 +71,6 @@ export default function DataSiswaPage() {
   const deleteSiswaMutation = useDeleteSiswaMutation();
 
   const [globalFilter, setGlobalFilter] = useState('');
-  const [sorting, setSorting] = useState<SortingState>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentItem | null>(null);
   const [deleteTargetStudent, setDeleteTargetStudent] = useState<StudentItem | null>(null);
@@ -251,7 +251,14 @@ export default function DataSiswaPage() {
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
             className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700 cursor-pointer"
           >
-            Siswa Bimbingan <ArrowUpDown className="w-3 h-3 ml-1" />
+            <span>Siswa Bimbingan</span>
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            )}
           </button>
         ),
         cell: (info) => (
@@ -268,7 +275,21 @@ export default function DataSiswaPage() {
       },
       {
         accessorKey: 'grade',
-        header: 'Tingkat / Jenjang',
+        header: ({ column }) => (
+          <button
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs hover:text-emerald-700 cursor-pointer"
+          >
+            <span>Tingkat / Jenjang</span>
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            )}
+          </button>
+        ),
         cell: (info) => (
           <Badge variant="amber" size="md">
             {info.getValue() as string}

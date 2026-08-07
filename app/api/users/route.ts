@@ -16,11 +16,20 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const roleId = searchParams.get('role_id');
+    const sortBy = searchParams.get('sort_by') || 'created_at';
+    const isAscending = searchParams.get('sort_order') === 'asc';
+
+    let dbSortColumn = 'created_at';
+    if (sortBy === 'full_name' || sortBy === 'name') dbSortColumn = 'full_name';
+    else if (sortBy === 'email') dbSortColumn = 'email';
+    else if (sortBy === 'category') dbSortColumn = 'category';
+    else if (sortBy === 'status') dbSortColumn = 'status';
+    else if (sortBy === 'created_at') dbSortColumn = 'created_at';
 
     let query = supabase
       .from('users')
       .select('*, roles(name)')
-      .order('created_at', { ascending: false });
+      .order(dbSortColumn, { ascending: isAscending });
 
     if (category && category !== 'all') {
       query = query.eq('category', category);

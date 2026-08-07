@@ -19,11 +19,18 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = Number(searchParams.get('page')) || 0;
     const limit = Number(searchParams.get('limit')) || 0;
+    const sortBy = searchParams.get('sort_by') || 'created_at';
+    const isAscending = searchParams.get('sort_order') !== 'desc';
+
+    let dbSortColumn = 'created_at';
+    if (sortBy === 'name') dbSortColumn = 'name';
+    else if (sortBy === 'grade') dbSortColumn = 'grade';
+    else if (sortBy === 'created_at') dbSortColumn = 'created_at';
 
     let query = supabase
       .from('students')
       .select('*, parents(id, name, phone, email)', { count: 'exact' })
-      .order('created_at', { ascending: false });
+      .order(dbSortColumn, { ascending: isAscending });
 
     if (page > 0 && limit > 0) {
       const from = (page - 1) * limit;
