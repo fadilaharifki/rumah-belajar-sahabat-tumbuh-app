@@ -38,11 +38,19 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    title: 'Sahabat Tumbuh',
+    statusBarStyle: 'black-translucent',
+  },
   icons: {
     icon: [
+      { url: '/icon-192.png', type: 'image/png' },
       { url: '/icon.svg', type: 'image/svg+xml' }
     ],
     apple: [
+      { url: '/apple-touch-icon.png', type: 'image/png' },
       { url: '/apple-icon.svg', type: 'image/svg+xml' }
     ]
   },
