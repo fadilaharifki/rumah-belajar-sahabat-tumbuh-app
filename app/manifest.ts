@@ -6,6 +6,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'Sahabat Tumbuh',
     description: 'Sistem Informasi Operasional & Pendampingan Belajar Rumah Belajar Sahabat Tumbuh',
     start_url: '/',
+    scope: '/',
+    id: '/',
     display: 'standalone',
     background_color: '#F8FAFC',
     theme_color: '#059669',
