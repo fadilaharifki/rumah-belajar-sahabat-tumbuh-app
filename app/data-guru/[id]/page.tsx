@@ -217,28 +217,28 @@ export default function DetailGuruPage() {
       </button>
 
       {/* Teacher Profile Header Card */}
-      <Card className="p-4 sm:p-6 bg-white border border-slate-200 shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
-          <div className="flex items-center gap-3 sm:gap-4">
+      <Card className="p-4 sm:p-6 bg-white border border-slate-200 shadow-sm space-y-6 min-w-0">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 min-w-0">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1 w-full sm:w-auto">
             <Avatar
               src={teacher.photo_url || teacher.avatar_url}
               name={teacher.name}
               size="lg"
               className="ring-2 sm:ring-4 ring-emerald-500 shadow-md shrink-0"
             />
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg sm:text-xl font-bold text-slate-900">{teacher.name}</h1>
-                <Badge variant={teacher.status === 'Aktif' ? 'emerald' : 'slate'} size="sm">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate max-w-[200px] sm:max-w-md" title={teacher.name}>{teacher.name}</h1>
+                <Badge variant={teacher.status === 'Aktif' ? 'emerald' : 'slate'} size="sm" className="shrink-0">
                   {teacher.status || 'Aktif'}
                 </Badge>
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-500 font-mono mt-0.5">ID Guru: {teacher.id}</p>
+              <p className="text-[11px] sm:text-xs text-slate-500 font-mono mt-0.5 truncate max-w-[220px] sm:max-w-none">ID Guru: {teacher.id}</p>
 
-              <div className="flex flex-wrap gap-3 sm:gap-4 text-xs font-medium text-slate-600 mt-2 sm:mt-3">
+              <div className="flex flex-wrap gap-3 sm:gap-4 text-xs font-medium text-slate-600 mt-2 sm:mt-3 min-w-0">
                 <a
                   href={`mailto:${teacher.email}`}
-                  className="flex items-center gap-1.5 hover:text-emerald-700 transition"
+                  className="flex items-center gap-1.5 hover:text-emerald-700 transition min-w-0"
                   title="Kirim Email"
                 >
                   <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -248,11 +248,11 @@ export default function DetailGuruPage() {
                   href={formatWaUrl(teacher.phone)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 font-semibold text-emerald-700 hover:text-emerald-900 transition"
+                  className="flex items-center gap-1.5 font-semibold text-emerald-700 hover:text-emerald-900 transition min-w-0"
                   title="Chat langsung via WhatsApp"
                 >
                   <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span className="underline decoration-emerald-300 underline-offset-2">{teacher.phone}</span>
+                  <span className="underline decoration-emerald-300 underline-offset-2 truncate">{teacher.phone}</span>
                 </a>
               </div>
 
@@ -267,7 +267,7 @@ export default function DetailGuruPage() {
             </div>
           </div>
 
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-left sm:text-right space-y-1 w-full sm:w-56">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-left sm:text-right space-y-1 w-full sm:w-56 shrink-0">
             <span className="text-[10px] font-bold uppercase text-emerald-700 tracking-wider">Tarif Honorarium:</span>
             <div className="text-base sm:text-lg font-bold text-emerald-900 font-mono">
               {formatRupiah(sessionRate)} <span className="text-xs font-normal">/ Sesi</span>
@@ -378,11 +378,10 @@ export default function DetailGuruPage() {
         <div className="overflow-x-auto scrollbar-none flex items-center gap-1.5 whitespace-nowrap min-w-0 pb-1 flex-1">
           <button
             onClick={() => setActiveTab('jadwal')}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${
-              activeTab === 'jadwal'
+            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'jadwal'
                 ? 'bg-emerald-600 text-amber-300 shadow-md shadow-emerald-200 font-extrabold'
                 : 'bg-white text-slate-600 hover:bg-slate-100'
-            }`}
+              }`}
           >
             <Calendar className="w-4 h-4 shrink-0" />
             <span>Jadwal Ngajar ({teacherSchedules.length})</span>
@@ -390,11 +389,10 @@ export default function DetailGuruPage() {
 
           <button
             onClick={() => setActiveTab('absensi')}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${
-              activeTab === 'absensi'
+            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'absensi'
                 ? 'bg-emerald-600 text-amber-300 shadow-md shadow-emerald-200 font-extrabold'
                 : 'bg-white text-slate-600 hover:bg-slate-100'
-            }`}
+              }`}
           >
             <ClipboardList className="w-4 h-4 shrink-0" />
             <span>Absensi ({attendanceList.length})</span>
@@ -402,11 +400,10 @@ export default function DetailGuruPage() {
 
           <button
             onClick={() => setActiveTab('murid')}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${
-              activeTab === 'murid'
+            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'murid'
                 ? 'bg-emerald-600 text-amber-300 shadow-md shadow-emerald-200 font-extrabold'
                 : 'bg-white text-slate-600 hover:bg-slate-100'
-            }`}
+              }`}
           >
             <GraduationCap className="w-4 h-4 shrink-0" />
             <span>Murid Bimbingan ({studentList.length})</span>
@@ -414,11 +411,10 @@ export default function DetailGuruPage() {
 
           <button
             onClick={() => setActiveTab('payroll')}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${
-              activeTab === 'payroll'
+            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'payroll'
                 ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-200 font-extrabold'
                 : 'bg-white text-slate-600 hover:bg-slate-100'
-            }`}
+              }`}
           >
             <Calculator className="w-4 h-4 shrink-0 text-emerald-800" />
             <span>Payroll ({payrollStatus})</span>
@@ -440,13 +436,15 @@ export default function DetailGuruPage() {
       {/* TAB 1: JADWAL NGAJAR GURU INI */}
       {activeTab === 'jadwal' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200">
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm sm:text-base">Jadwal Sesi Ngajar — {teacher.name}</h3>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 min-w-0">
+            <div className="min-w-0">
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base truncate" title={`Jadwal Sesi Ngajar — ${teacher.name}`}>
+                Jadwal Sesi Ngajar — {teacher.name}
+              </h3>
               <p className="text-xs text-slate-500 font-medium">Jadwal mingguan bimbingan belajar khusus guru ini</p>
             </div>
             {can('create', 'jadwal') && (
-              <Button variant="primary" size="sm" onClick={() => setIsAddJadwalOpen(!isAddJadwalOpen)}>
+              <Button variant="primary" size="sm" onClick={() => setIsAddJadwalOpen(!isAddJadwalOpen)} className="shrink-0 text-xs font-bold whitespace-nowrap">
                 <Plus className="w-4 h-4 mr-1 text-amber-300" /> Tambah Jadwal Guru Ini
               </Button>
             )}
@@ -585,10 +583,10 @@ export default function DetailGuruPage() {
 
       {/* TAB 2: RIWAYAT ABSENSI */}
       {activeTab === 'absensi' && (
-        <Card className="p-0 overflow-hidden bg-white shadow-sm border border-slate-200">
-          <div className="p-3.5 sm:p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between font-bold text-xs text-slate-700">
-            <span>Presensi — {teacher.name}</span>
-            <span className="text-emerald-700 font-mono text-[11px] sm:text-xs">{selectedMonthLabel}</span>
+        <Card className="p-0 overflow-hidden bg-white shadow-sm border border-slate-200 min-w-0">
+          <div className="p-3.5 sm:p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between font-bold text-xs text-slate-700 min-w-0">
+            <span className="truncate max-w-[200px] sm:max-w-md" title={`Presensi — ${teacher.name}`}>Presensi — {teacher.name}</span>
+            <span className="text-emerald-700 font-mono text-[11px] sm:text-xs shrink-0">{selectedMonthLabel}</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -607,7 +605,7 @@ export default function DetailGuruPage() {
                   attendanceList.map((att: any) => (
                     <tr key={att.id} className="hover:bg-emerald-50/20 transition">
                       <td className="px-4 sm:px-5 py-3.5 font-mono font-bold text-slate-800 whitespace-nowrap">{att.date}</td>
-                      <td className="px-4 sm:px-5 py-3.5 font-bold text-slate-900 whitespace-nowrap">{att.student_name}</td>
+                      <td className="px-4 sm:px-5 py-3.5 font-bold text-slate-900 max-w-[180px] truncate" title={att.student_name}>{att.student_name}</td>
                       <td className="px-4 sm:px-5 py-3.5 font-mono font-bold text-emerald-800">{att.check_in}</td>
                       <td className="px-4 sm:px-5 py-3.5 font-mono text-slate-600">{att.check_out || '-'}</td>
                       <td className="px-4 sm:px-5 py-3.5 font-mono font-bold text-slate-800">{att.duration_minutes}m</td>
@@ -637,15 +635,15 @@ export default function DetailGuruPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {studentList.length > 0 ? (
             studentList.map((std: any) => (
-              <Card key={std.id} className="p-4 sm:p-6 space-y-4 bg-white border border-slate-200 shadow-xs hover:shadow-md transition">
-                <div className="flex items-center gap-3 sm:gap-4">
+              <Card key={std.id} className="p-4 sm:p-6 space-y-4 bg-white border border-slate-200 shadow-xs hover:shadow-md transition min-w-0">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                   <Avatar src={std.avatar_url} name={std.name} size="lg" className="ring-2 ring-amber-400 shrink-0" />
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-sm sm:text-base">{std.name}</h3>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-slate-900 text-sm sm:text-base truncate" title={std.name}>{std.name}</h3>
                     <Badge variant="amber" size="sm" className="mt-1">
                       {std.grade}
                     </Badge>
-                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-1">Wali: {std.parent_name}</p>
+                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-1 truncate" title={`Wali: ${std.parent_name}`}>Wali: {std.parent_name}</p>
                   </div>
                 </div>
 
