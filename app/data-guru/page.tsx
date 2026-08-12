@@ -273,9 +273,9 @@ export default function DataGuruPage() {
           </button>
         ),
         cell: (info) => (
-          <div className="flex items-center gap-3">
-            <Avatar src={info.row.original.photo_url || info.row.original.avatar_url} name={info.getValue() as string} size="md" />
-            <div className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition">
+          <div className="flex items-center gap-3 min-w-0 max-w-[200px]">
+            <Avatar src={info.row.original.photo_url || info.row.original.avatar_url} name={info.getValue() as string} size="md" className="shrink-0" />
+            <div className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition truncate min-w-0" title={info.getValue() as string}>
               {info.getValue() as string}
             </div>
           </div>
@@ -299,25 +299,25 @@ export default function DataGuruPage() {
           </button>
         ),
         cell: (info) => (
-          <div className="space-y-0.5">
+          <div className="space-y-0.5 min-w-0 max-w-[200px]">
             <a
               href={`mailto:${info.getValue()}`}
-              className="text-slate-800 font-semibold flex items-center gap-1.5 hover:text-emerald-700 transition"
+              className="text-slate-800 font-semibold flex items-center gap-1.5 hover:text-emerald-700 transition min-w-0"
               onClick={(e) => e.stopPropagation()}
             >
               <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span>{info.getValue() as string}</span>
+              <span className="truncate" title={info.getValue() as string}>{info.getValue() as string}</span>
             </a>
             <a
               href={formatWaUrl(info.row.original.phone)}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1.5 text-[11px] font-mono transition"
+              className="text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1.5 text-[11px] font-mono transition min-w-0"
               onClick={(e) => e.stopPropagation()}
               title="Chat langsung via WhatsApp"
             >
               <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span className="underline decoration-emerald-300 underline-offset-2">{info.row.original.phone}</span>
+              <span className="underline decoration-emerald-300 underline-offset-2 truncate">{info.row.original.phone}</span>
             </a>
           </div>
         )

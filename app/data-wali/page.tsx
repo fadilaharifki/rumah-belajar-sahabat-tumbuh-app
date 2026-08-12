@@ -228,13 +228,15 @@ export default function DataWaliPage() {
           </button>
         ),
         cell: (info) => (
-          <div className="flex items-center gap-3">
-            <Avatar name={info.getValue() as string} src={info.row.original.avatar_url} size="md" />
-            <div>
-              <div className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition">{info.getValue() as string}</div>
-              <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+          <div className="flex items-center gap-3 min-w-0 max-w-[220px]">
+            <Avatar name={info.getValue() as string} src={info.row.original.avatar_url} size="md" className="shrink-0" />
+            <div className="min-w-0">
+              <div className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition truncate" title={info.getValue() as string}>
+                {info.getValue() as string}
+              </div>
+              <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5 min-w-0">
                 <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                <span className="truncate max-w-[180px]">{info.row.original.address}</span>
+                <span className="truncate max-w-[170px]" title={info.row.original.address}>{info.row.original.address}</span>
               </div>
             </div>
           </div>
@@ -258,23 +260,23 @@ export default function DataWaliPage() {
           </button>
         ),
         cell: (info) => (
-          <div className="space-y-0.5">
+          <div className="space-y-0.5 min-w-0 max-w-[200px]">
             <a
               href={formatWaUrl(info.getValue() as string)}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-emerald-700 hover:text-emerald-900 text-xs flex items-center gap-1.5 transition"
+              className="font-semibold text-emerald-700 hover:text-emerald-900 text-xs flex items-center gap-1.5 transition min-w-0"
               title="Chat langsung via WhatsApp"
             >
               <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span className="underline decoration-emerald-300 underline-offset-2">{info.getValue() as string}</span>
+              <span className="underline decoration-emerald-300 underline-offset-2 truncate">{info.getValue() as string}</span>
             </a>
             <a
               href={`mailto:${info.row.original.email}`}
-              className="text-slate-500 hover:text-emerald-700 text-[11px] flex items-center gap-1.5 font-mono transition"
+              className="text-slate-500 hover:text-emerald-700 text-[11px] flex items-center gap-1.5 font-mono transition min-w-0"
             >
               <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span>{info.row.original.email}</span>
+              <span className="truncate" title={info.row.original.email}>{info.row.original.email}</span>
             </a>
           </div>
         )

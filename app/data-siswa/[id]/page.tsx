@@ -510,10 +510,12 @@ export default function DetailSiswaPage() {
               <Card key={log.id} className="p-3.5 sm:p-4 space-y-2.5 bg-white border border-slate-200/90 shadow-2xs hover:border-emerald-300 transition rounded-2xl">
                 {/* Session Timeline Header */}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                  <div className="flex items-center gap-2">
-                    <Avatar src={log.teacher_photo} name={log.teacher_name} size="sm" className="ring-2 ring-emerald-500/30" />
-                    <div>
-                      <h3 className="font-extrabold text-slate-900 text-xs sm:text-sm">{log.teacher_name}</h3>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Avatar src={log.teacher_photo} name={log.teacher_name} size="sm" className="ring-2 ring-emerald-500/30 shrink-0" />
+                    <div className="min-w-0">
+                      <h3 className="font-extrabold text-slate-900 text-xs sm:text-sm truncate max-w-[180px] sm:max-w-xs" title={log.teacher_name}>
+                        {log.teacher_name}
+                      </h3>
                       <p className="text-[11px] text-slate-500 font-medium">Pengajar Pendamping</p>
                     </div>
                   </div>
@@ -600,19 +602,28 @@ export default function DetailSiswaPage() {
         {selectedDetailLog && (
           <div className="space-y-4">
             {/* Header Information Box */}
-            <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 text-xs flex flex-wrap items-center justify-between gap-2">
-              <div className="space-y-0.5">
-                <p className="text-emerald-950">
-                  <strong>Guru Pengajar:</strong> {selectedDetailLog.teacher_name}
-                </p>
-                <p className="text-emerald-950">
-                  <strong>Siswa:</strong> {student.name} ({student.grade})
-                </p>
+            <div className="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 text-xs space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-800">
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">Guru Pengajar</span>
+                  <p className="font-bold text-slate-900 truncate" title={selectedDetailLog.teacher_name}>
+                    {selectedDetailLog.teacher_name}
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">Siswa Bimbingan</span>
+                  <p className="font-bold text-slate-900 truncate" title={student.name}>
+                    {student.name} <span className="text-amber-800 text-[11px] font-bold">({student.grade})</span>
+                  </p>
+                </div>
               </div>
-              <div className="text-right font-mono text-[11px] text-emerald-800">
-                <p className="font-bold">Pertemuan ke-{selectedDetailLog.session_number || 1}</p>
-                <p>Tanggal: {selectedDetailLog.session_date}</p>
-                <p>{selectedDetailLog.start_time} - {selectedDetailLog.end_time} WIB</p>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-emerald-200/80 font-mono text-[11px] text-emerald-950">
+                <span className="font-extrabold bg-emerald-200/80 text-emerald-950 px-2 py-0.5 rounded-md">
+                  Pertemuan ke-{selectedDetailLog.session_number || 1}
+                </span>
+                <span>Tanggal: {selectedDetailLog.session_date}</span>
+                <span>Jam: {selectedDetailLog.start_time} - {selectedDetailLog.end_time} WIB</span>
               </div>
             </div>
 
@@ -738,10 +749,10 @@ export default function DetailSiswaPage() {
                   studentAttendance.map((att: any) => (
                     <tr key={att.id} className="hover:bg-emerald-50/20 transition">
                       <td className="px-4 py-3 font-mono font-bold text-slate-800">{att.date}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Avatar src={att.teacher_photo} name={att.teacher_name} size="xs" />
-                          <span className="font-bold text-slate-900">{att.teacher_name}</span>
+                      <td className="px-4 py-3 max-w-[180px]">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Avatar src={att.teacher_photo} name={att.teacher_name} size="xs" className="shrink-0" />
+                          <span className="font-bold text-slate-900 truncate" title={att.teacher_name}>{att.teacher_name}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 font-mono font-bold text-emerald-800">{att.check_in}</td>

@@ -118,13 +118,13 @@ export default function DataPenggunaPage() {
           const userName = (info.getValue() as string) || info.row.original.email?.split('@')[0] || 'Pengguna';
           const avatarUrl = info.row.original.avatar_url;
           return (
-            <div className="flex items-center gap-3">
-              <Avatar name={userName} src={avatarUrl} size="md" />
-              <div>
-                <div className="font-semibold text-slate-900 text-sm">{userName}</div>
-                <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
-                  <Mail className="w-3 h-3 text-slate-400" />
-                  <span>{info.row.original.email}</span>
+            <div className="flex items-center gap-3 min-w-0 max-w-[220px]">
+              <Avatar name={userName} src={avatarUrl} size="md" className="shrink-0" />
+              <div className="min-w-0">
+                <div className="font-semibold text-slate-900 text-sm truncate" title={userName}>{userName}</div>
+                <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1 min-w-0">
+                  <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span className="truncate" title={info.row.original.email}>{info.row.original.email}</span>
                 </div>
               </div>
             </div>

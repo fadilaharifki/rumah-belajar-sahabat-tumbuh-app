@@ -225,9 +225,9 @@ export default function DataStaffPage() {
           </button>
         ),
         cell: (info) => (
-          <div className="flex items-center gap-3">
-            <Avatar name={info.getValue() as string} src={info.row.original.avatar_url} size="md" />
-            <div className="font-semibold text-slate-900 text-sm group-hover:text-emerald-700 transition">
+          <div className="flex items-center gap-3 min-w-0 max-w-[220px]">
+            <Avatar name={info.getValue() as string} src={info.row.original.avatar_url} size="md" className="shrink-0" />
+            <div className="font-semibold text-slate-900 text-sm group-hover:text-emerald-700 transition truncate min-w-0" title={info.getValue() as string}>
               {info.getValue() as string}
             </div>
           </div>
@@ -251,14 +251,14 @@ export default function DataStaffPage() {
           </button>
         ),
         cell: (info) => (
-          <div className="space-y-0.5">
-            <div className="text-slate-800 font-semibold flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-slate-400" />
-              <span>{info.getValue() as string}</span>
+          <div className="space-y-0.5 min-w-0 max-w-[200px]">
+            <div className="text-slate-800 font-semibold flex items-center gap-1.5 min-w-0">
+              <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span className="truncate" title={info.getValue() as string}>{info.getValue() as string}</span>
             </div>
-            <div className="text-slate-500 text-[11px] flex items-center gap-1.5">
-              <Phone className="w-3.5 h-3.5 text-slate-400" />
-              <span>{info.row.original.phone}</span>
+            <div className="text-slate-500 text-[11px] flex items-center gap-1.5 min-w-0">
+              <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span className="truncate">{info.row.original.phone}</span>
             </div>
           </div>
         )

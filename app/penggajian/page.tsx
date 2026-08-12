@@ -342,12 +342,12 @@ export default function PenggajianPage() {
                       onClick={() => router.push(`/data-guru/${item.id}`)}
                       className="hover:bg-amber-50/20 cursor-pointer transition group"
                     >
-                      <td className="px-3.5 py-2.5">
-                        <div className="flex items-center gap-2.5">
-                          <Avatar src={item.photo_url || item.avatar_url} name={item.name} size="sm" />
-                          <div>
-                            <div className="font-bold text-slate-900 text-xs group-hover:text-emerald-700 transition">{item.name}</div>
-                            <div className="text-[10px] text-slate-400 font-mono">{item.email}</div>
+                      <td className="px-3.5 py-2.5 max-w-[200px]">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Avatar src={item.photo_url || item.avatar_url} name={item.name} size="sm" className="shrink-0" />
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-900 text-xs group-hover:text-emerald-700 transition truncate" title={item.name}>{item.name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono truncate" title={item.email}>{item.email}</div>
                           </div>
                         </div>
                       </td>
