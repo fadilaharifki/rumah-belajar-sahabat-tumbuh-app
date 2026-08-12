@@ -36,7 +36,15 @@ import { Modal } from '@/components/atoms/Modal';
 import { TablePagination } from '@/components/molecules/TablePagination';
 import { SkeletonTable, Skeleton } from '@/components/atoms/Skeleton';
 import { ImageUpload } from '@/components/molecules/ImageUpload';
+import { RichTextEditor } from '@/components/molecules/RichTextEditor';
 import { formatWaUrl } from '@/utils/formatters';
+
+function formatRichContent(text?: string): string {
+  if (!text) return '-';
+  const hasHtml = /<[a-z][\s\S]*>/i.test(text);
+  if (hasHtml) return text;
+  return text.replace(/\n/g, '<br />');
+}
 
 export default function DataSiswaPage() {
   const router = useRouter();
@@ -598,7 +606,12 @@ export default function DataSiswaPage() {
 
               <div className="sm:col-span-2">
                 <Label>Catatan Khusus Belajar / Kebutuhan Siswa:</Label>
-                <Input value={sNotes} onChange={(e) => setSNotes(e.target.value)} placeholder="Perlu bimbingan ekstra matematika dasar" disabled={isUploadingPhoto} />
+                <RichTextEditor
+                  value={sNotes}
+                  onChange={setSNotes}
+                  placeholder="Contoh: Perlu bimbingan ekstra matematika dasar, fokus latihan membaca..."
+                  minHeight="90px"
+                />
               </div>
 
               <div className="sm:col-span-2 flex justify-end gap-2 pt-3 border-t border-slate-100">
@@ -647,8 +660,13 @@ export default function DataSiswaPage() {
               />
             </div>
             <div>
-              <Label>Catatan Belajar:</Label>
-              <Input value={editNotes} onChange={(e) => setEditNotes(e.target.value)} disabled={isUploadingPhoto} />
+              <Label>Catatan Khusus Belajar / Kebutuhan Siswa:</Label>
+              <RichTextEditor
+                value={editNotes}
+                onChange={setEditNotes}
+                placeholder="Contoh: Perlu bimbingan ekstra matematika dasar..."
+                minHeight="90px"
+              />
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
@@ -781,11 +799,7 @@ export default function DataSiswaPage() {
                     <p className="font-semibold text-slate-800">{std.parent_name || 'Belum Ditautkan'}</p>
                   </div>
 
-                  {std.notes && (
-                    <p className="text-[11px] text-amber-900 italic font-medium bg-amber-50 p-2 rounded-lg border border-amber-100">
-                      "{std.notes}"
-                    </p>
-                  )}
+
 
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                     <Button

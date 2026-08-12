@@ -375,10 +375,10 @@ export default function DetailGuruPage() {
 
       {/* 4 Detail Tabs & Action Controls */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-200 pb-2">
-        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+        <div className="overflow-x-auto scrollbar-none flex items-center gap-1.5 whitespace-nowrap min-w-0 pb-1 flex-1">
           <button
             onClick={() => setActiveTab('jadwal')}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'jadwal'
                 ? 'bg-emerald-600 text-amber-300 shadow-md shadow-emerald-200 font-extrabold'
                 : 'bg-white text-slate-600 hover:bg-slate-100'
@@ -390,7 +390,7 @@ export default function DetailGuruPage() {
 
           <button
             onClick={() => setActiveTab('absensi')}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'absensi'
                 ? 'bg-emerald-600 text-amber-300 shadow-md shadow-emerald-200 font-extrabold'
                 : 'bg-white text-slate-600 hover:bg-slate-100'
@@ -402,7 +402,7 @@ export default function DetailGuruPage() {
 
           <button
             onClick={() => setActiveTab('murid')}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'murid'
                 ? 'bg-emerald-600 text-amber-300 shadow-md shadow-emerald-200 font-extrabold'
                 : 'bg-white text-slate-600 hover:bg-slate-100'
@@ -414,7 +414,7 @@ export default function DetailGuruPage() {
 
           <button
             onClick={() => setActiveTab('payroll')}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'payroll'
                 ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-200 font-extrabold'
                 : 'bg-white text-slate-600 hover:bg-slate-100'
@@ -426,7 +426,7 @@ export default function DetailGuruPage() {
         </div>
 
         {activeTab !== 'murid' && activeTab !== 'jadwal' && (
-          <div className="w-full sm:w-56">
+          <div className="w-full sm:w-56 shrink-0">
             <DatePicker
               mode="month"
               value={selectedDateObj}

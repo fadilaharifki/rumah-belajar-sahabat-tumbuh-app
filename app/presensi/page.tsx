@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   CheckCircle2, Clock, ShieldCheck, FileText, Plus, AlertTriangle, X, Check,
-  UserCheck, AlertCircle, Edit3, Trash2, Calendar, Hash, Sparkles, Filter, ArrowDown, Camera
+  UserCheck, AlertCircle, Edit3, Trash2, Calendar, Hash, Sparkles, Filter, ArrowDown, Camera, Eye, BookOpen
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import {
@@ -29,7 +29,15 @@ import { DatePicker } from '@/components/atoms/DatePicker';
 import { TimePicker } from '@/components/atoms/TimePicker';
 import { Modal } from '@/components/atoms/Modal';
 import { Skeleton, SkeletonTable } from '@/components/atoms/Skeleton';
+import { RichTextEditor } from '@/components/molecules/RichTextEditor';
 import { format } from 'date-fns';
+
+function formatRichContent(text?: string): string {
+  if (!text) return '-';
+  const hasHtml = /<[a-z][\s\S]*>/i.test(text);
+  if (hasHtml) return text;
+  return text.replace(/\n/g, '<br />');
+}
 
 export default function PresensiPage() {
   const { user } = useAuthStore();
@@ -86,6 +94,7 @@ export default function PresensiPage() {
   const [logSessionNumber, setLogSessionNumber] = useState<number>(1);
   const [logActivities, setLogActivities] = useState('');
   const [logNotes, setLogNotes] = useState('');
+  const [viewDetailLogItem, setViewDetailLogItem] = useState<PresensiItem | null>(null);
 
   // Modal State for Admin Manual Verification
   const [manualVerifyTarget, setManualVerifyTarget] = useState<PresensiItem | null>(null);
@@ -415,25 +424,21 @@ export default function PresensiPage() {
 
               <div>
                 <Label required className="text-xs font-bold text-slate-700 mb-1">Materi / Aktivitas Belajar:</Label>
-                <textarea
-                  required
-                  rows={2.5}
+                <RichTextEditor
                   value={logActivities}
-                  onChange={(e) => setLogActivities(e.target.value)}
+                  onChange={setLogActivities}
                   placeholder="Contoh: Belajar Perkalian & Pembagian 1-10..."
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs"
+                  minHeight="90px"
                 />
               </div>
 
               <div>
-                <Label required className="text-xs font-bold text-slate-700 mb-1">Evaluasi :</Label>
-                <textarea
-                  required
-                  rows={2.5}
+                <Label required className="text-xs font-bold text-slate-700 mb-1">Evaluasi / Hasil Belajar:</Label>
+                <RichTextEditor
                   value={logNotes}
-                  onChange={(e) => setLogNotes(e.target.value)}
+                  onChange={setLogNotes}
                   placeholder="Contoh: Ananda lancar perkalian 5, bimbingan lanjutan di rumah..."
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs"
+                  minHeight="90px"
                 />
               </div>
 
@@ -498,6 +503,86 @@ export default function PresensiPage() {
         </div>
       </Modal>
 
+      {/* 5. MODAL DETAIL LAPORAN SESI BELAJAR */}
+      <Modal
+        isOpen={Boolean(viewDetailLogItem)}
+        onClose={() => setViewDetailLogItem(null)}
+        title="Detail Laporan Sesi Pembelajaran"
+        icon={FileText}
+        maxWidth="lg"
+      >
+        {viewDetailLogItem && viewDetailLogItem.session_log && (
+          <div className="space-y-4">
+            {/* Header Metadata Box */}
+            <div className="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 text-xs flex flex-wrap items-center justify-between gap-2">
+              <div className="space-y-1">
+                <p className="text-emerald-950">
+                  <strong>Guru Pengajar:</strong> {viewDetailLogItem.teacher_name}
+                </p>
+                <p className="text-emerald-950">
+                  <strong>Siswa:</strong> {viewDetailLogItem.student_name} ({viewDetailLogItem.student_grade})
+                </p>
+              </div>
+              <div className="text-right font-mono text-[11px] text-emerald-800 space-y-0.5">
+                <p className="font-bold">Pertemuan ke-{viewDetailLogItem.session_log.session_number || 1}</p>
+                <p>Tanggal: {viewDetailLogItem.date}</p>
+                <p>Jam: {viewDetailLogItem.check_in} WIB ({viewDetailLogItem.duration_minutes || 60} Menit)</p>
+              </div>
+            </div>
+
+            {/* Content Boxes */}
+            <div className="space-y-3.5">
+              {/* Materi & Aktivitas Belajar */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs text-slate-700 border-b border-slate-200/80 pb-2">
+                  <BookOpen className="w-4 h-4 text-emerald-600" />
+                  <span>Materi & Aktivitas Belajar:</span>
+                </div>
+                <div
+                  className="rich-text-content text-slate-800 font-normal text-xs sm:text-sm leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: formatRichContent(viewDetailLogItem.session_log.activities) }}
+                />
+              </div>
+
+              {/* Evaluasi & Hasil Belajar */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/90 to-amber-50/70 border border-emerald-200 space-y-2">
+                <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs text-emerald-900 border-b border-emerald-200/80 pb-2">
+                  <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400" />
+                  <span>Evaluasi & Hasil Belajar:</span>
+                </div>
+                <div
+                  className="rich-text-content text-emerald-950 font-normal text-xs sm:text-sm leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: formatRichContent(viewDetailLogItem.session_log.results_recommendations) }}
+                />
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+              <button
+                onClick={() => {
+                  const target = viewDetailLogItem;
+                  setViewDetailLogItem(null);
+                  handleOpenLogModal(target);
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer flex items-center gap-1"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-slate-600" /> Edit Laporan Ini
+              </button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setViewDetailLogItem(null)}
+                className="h-9 text-xs font-bold px-4 rounded-xl"
+              >
+                Tutup
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
 
 
       {isLoading ? (
@@ -545,12 +630,27 @@ export default function PresensiPage() {
                           </td>
                           <td className="px-3.5 py-2.5 max-w-xs">
                             {item.session_log ? (
-                              <div className="space-y-0.5">
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-bold text-[9px] bg-emerald-100 text-emerald-900">
-                                  <Hash className="w-2.5 h-2.5" /> ke-{item.session_log.session_number || 1}
-                                </span>
-                                <p className="font-semibold text-slate-900 truncate">{item.session_log.activities}</p>
-                                <p className="text-[11px] text-emerald-950 font-semibold italic truncate">"{item.session_log.results_recommendations}"</p>
+                              <div
+                                onClick={() => setViewDetailLogItem(item)}
+                                className="space-y-0.5 cursor-pointer hover:bg-emerald-50/50 p-1.5 rounded-xl transition border border-transparent hover:border-emerald-200"
+                                title="Klik untuk lihat detail laporan"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-bold text-[9px] bg-emerald-100 text-emerald-900">
+                                    <Hash className="w-2.5 h-2.5" /> ke-{item.session_log.session_number || 1}
+                                  </span>
+                                  <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-0.5">
+                                    <Eye className="w-3 h-3" /> Detail
+                                  </span>
+                                </div>
+                                <div
+                                  className="rich-text-content font-normal text-slate-900 line-clamp-1 text-xs"
+                                  dangerouslySetInnerHTML={{ __html: formatRichContent(item.session_log.activities) }}
+                                />
+                                <div
+                                  className="rich-text-content text-[11px] text-emerald-950 font-normal italic line-clamp-1"
+                                  dangerouslySetInnerHTML={{ __html: formatRichContent(item.session_log.results_recommendations) }}
+                                />
                               </div>
                             ) : (
                               <button
@@ -582,6 +682,15 @@ export default function PresensiPage() {
                           </td>
                           <td className="px-3.5 py-2.5 text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1">
+                              {item.session_log && (
+                                <button
+                                  onClick={() => setViewDetailLogItem(item)}
+                                  className="p-1 text-emerald-700 hover:bg-emerald-50 rounded-lg cursor-pointer"
+                                  title="Lihat Detail Laporan"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              )}
                               {!isValid && can('update', 'presensi') && (
                                 <button
                                   onClick={() => setManualVerifyTarget(item)}
@@ -694,12 +803,21 @@ export default function PresensiPage() {
                               <span className="text-[9px] font-bold text-emerald-800 uppercase">Jurnal</span>
                             </div>
 
-                            <p className="text-slate-900 font-medium line-clamp-1 leading-snug">
-                              🎯 {item.session_log.activities}
-                            </p>
-                            <p className="text-emerald-950 font-semibold italic line-clamp-1 leading-snug">
-                              ✨ "{item.session_log.results_recommendations}"
-                            </p>
+                            <div
+                              className="rich-text-content text-slate-900 font-normal text-xs line-clamp-2 leading-snug"
+                              dangerouslySetInnerHTML={{ __html: `🎯 ${formatRichContent(item.session_log.activities)}` }}
+                            />
+                            <div
+                              className="rich-text-content text-emerald-950 font-normal italic text-xs line-clamp-2 leading-snug"
+                              dangerouslySetInnerHTML={{ __html: `✨ ${formatRichContent(item.session_log.results_recommendations)}` }}
+                            />
+
+                            <button
+                              onClick={() => setViewDetailLogItem(item)}
+                              className="w-full mt-1.5 py-1 px-2.5 rounded-xl text-[11px] font-bold bg-emerald-100/90 hover:bg-emerald-200 text-emerald-950 transition cursor-pointer flex items-center justify-center gap-1 shadow-2xs border border-emerald-300/60"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-emerald-700" /> Lihat Detail Laporan
+                            </button>
                           </div>
                         ) : (
                           <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200 text-[11px] text-center space-y-1.5">

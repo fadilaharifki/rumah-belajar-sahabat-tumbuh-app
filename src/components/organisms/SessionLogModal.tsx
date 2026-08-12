@@ -5,6 +5,7 @@ import { Button } from '../atoms/Button';
 import { Label } from '../atoms/Label';
 import { Student } from '@/hooks/useMasterData';
 import { SessionLog } from '@/hooks/useSessions';
+import { RichTextEditor } from '../molecules/RichTextEditor';
 
 export interface SessionLogModalProps {
   onSubmitLog: (log: SessionLog) => void;
@@ -89,26 +90,22 @@ export const SessionLogModal: React.FC<SessionLogModalProps> = ({ onSubmitLog })
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label required>Kegiatan (Materi & Aktivitas Belajar):</Label>
-              <textarea
-                rows={3}
-                required
+              <Label required className="text-xs font-bold text-slate-700 mb-1">Kegiatan (Materi & Aktivitas Belajar):</Label>
+              <RichTextEditor
                 value={activities}
-                onChange={(e) => setActivities(e.target.value)}
+                onChange={setActivities}
                 placeholder="Contoh: Latihan soal pecahan senilai, pembagian bersusun sederhana, dan game tebak matematika..."
-                className="w-full rounded-2xl border border-slate-200 p-3 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                minHeight="100px"
               />
             </div>
 
             <div>
-              <Label required>Hasil & Rekomendasi (Evaluasi Belajar Siswa):</Label>
-              <textarea
-                rows={3}
-                required
+              <Label required className="text-xs font-bold text-slate-700 mb-1">Hasil & Rekomendasi (Evaluasi Belajar Siswa):</Label>
+              <RichTextEditor
                 value={recommendations}
-                onChange={(e) => setRecommendations(e.target.value)}
+                onChange={setRecommendations}
                 placeholder="Contoh: Bintang sudah memahami konsep pecahan dengan baik (skor 85). Rekomendasi: Latihan rutin perkalian 7 dan 8 di rumah..."
-                className="w-full rounded-2xl border border-slate-200 p-3 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                minHeight="100px"
               />
             </div>
 
