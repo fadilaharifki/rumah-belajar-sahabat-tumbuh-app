@@ -225,8 +225,8 @@ export default function PresensiPage() {
                 {user?.role === 'teacher'
                   ? `Riwayat presensi & laporan belajar (${user?.full_name || ''}).`
                   : user?.role === 'parent'
-                  ? `Bukti kehadiran guru & jurnal belajar putra/putri.`
-                  : 'Check-In 1-Klik terpasang dengan Laporan Belajar Siswa.'}
+                    ? `Bukti kehadiran guru & jurnal belajar putra/putri.`
+                    : 'Check-In 1-Klik terpasang dengan Laporan Belajar Siswa.'}
               </p>
             </div>
           </div>
@@ -249,22 +249,20 @@ export default function PresensiPage() {
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none min-w-0">
             <button
               onClick={() => setActiveTab('semua')}
-              className={`px-2.5 py-1 sm:px-3 rounded-xl font-bold text-[11px] sm:text-xs transition cursor-pointer whitespace-nowrap shrink-0 ${
-                activeTab === 'semua'
+              className={`px-2.5 py-1 sm:px-3 rounded-xl font-bold text-[11px] sm:text-xs transition cursor-pointer whitespace-nowrap shrink-0 ${activeTab === 'semua'
                   ? 'bg-emerald-600 text-amber-300 shadow-2xs font-extrabold'
                   : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60'
-              }`}
+                }`}
             >
               Semua ({presensiList.length})
             </button>
 
             <button
               onClick={() => setActiveTab('pending')}
-              className={`flex items-center gap-1 px-2.5 py-1 sm:px-3 rounded-xl font-bold text-[11px] sm:text-xs transition cursor-pointer whitespace-nowrap shrink-0 ${
-                activeTab === 'pending'
+              className={`flex items-center gap-1 px-2.5 py-1 sm:px-3 rounded-xl font-bold text-[11px] sm:text-xs transition cursor-pointer whitespace-nowrap shrink-0 ${activeTab === 'pending'
                   ? 'bg-amber-500 text-slate-950 shadow-2xs font-extrabold'
                   : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200/60'
-              }`}
+                }`}
             >
               <AlertCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-900 shrink-0" />
               <span>Menunggu Laporan ({pendingReports.length})</span>
@@ -428,7 +426,7 @@ export default function PresensiPage() {
               </div>
 
               <div>
-                <Label required className="text-xs font-bold text-slate-700 mb-1">Catatan Perkembangan Anak:</Label>
+                <Label required className="text-xs font-bold text-slate-700 mb-1">Evaluasi :</Label>
                 <textarea
                   required
                   rows={2.5}

@@ -373,7 +373,7 @@ export default function DataWaliPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto w-full sm:w-auto">
+        <div className="flex flex-col md:flex-row items-center gap-2 ml-auto w-full sm:w-auto">
           <div className="w-full sm:w-64">
             <Input
               icon={Search}
@@ -384,31 +384,34 @@ export default function DataWaliPage() {
           </div>
 
           {can('create', 'wali') && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (isBulkMode) {
-                    setIsBulkMode(false);
-                    setSelectedIds([]);
-                  } else {
-                    setIsBulkMode(true);
-                  }
-                }}
-                className={`shadow-xs text-xs font-bold h-9 px-3 rounded-xl shrink-0 ${
-                  isBulkMode
-                    ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <CheckSquare className="w-3.5 h-3.5 mr-1" />
-                {isBulkMode ? 'Tutup Mode Massal' : 'Pilih Massal'}
-              </Button>
-
-              <Button variant="primary" size="sm" onClick={() => setIsFormOpen(!isFormOpen)} className="shadow-xs text-xs font-bold h-9 px-4 rounded-xl shrink-0">
-                <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Wali
-              </Button>
+            <div className="flex items-center gap-2 w-full">
+              <div className="flex w-full">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (isBulkMode) {
+                      setIsBulkMode(false);
+                      setSelectedIds([]);
+                    } else {
+                      setIsBulkMode(true);
+                    }
+                  }}
+                  className={`w-full shadow-xs text-xs font-bold h-9 px-3 rounded-xl shrink-0 ${
+                    isBulkMode
+                      ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <CheckSquare className="w-3.5 h-3.5 mr-1" />
+                  {isBulkMode ? 'Tutup Mode Massal' : 'Pilih Massal'}
+                </Button>
+              </div>
+              <div className="flex w-full">
+                <Button variant="primary" size="sm" onClick={() => setIsFormOpen(!isFormOpen)} className="w-full shadow-xs text-xs font-bold h-9 px-4 rounded-xl shrink-0">
+                  <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Wali
+                </Button>
+              </div>
             </div>
           )}
         </div>

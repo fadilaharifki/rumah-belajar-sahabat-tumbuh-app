@@ -460,7 +460,7 @@ export default function DetailSiswaPage() {
           </div>
 
           <div>
-            <Label required className="text-xs font-bold text-slate-700 mb-1">Hasil & Catatan Perkembangan:</Label>
+            <Label required className="text-xs font-bold text-slate-700 mb-1">Evaluasi :</Label>
             <textarea
               required
               rows={5}
@@ -532,7 +532,7 @@ export default function DetailSiswaPage() {
                   <div className="p-3.5 rounded-xl bg-gradient-to-br from-emerald-50/90 via-teal-50/80 to-amber-50/60 border border-emerald-200/90 space-y-1">
                     <div className="flex items-center gap-1 font-bold uppercase tracking-wider text-[10px] text-emerald-900">
                       <Sparkles className="w-3 h-3 text-amber-500 fill-amber-400" />
-                      <span>Hasil & Catatan Perkembangan:</span>
+                      <span>Evaluasi :</span>
                     </div>
                     <p className="text-emerald-950 font-bold leading-relaxed">
                       "{log.results_recommendations}"
