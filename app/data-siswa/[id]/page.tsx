@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, UserCheck, Calendar, FileText, Sparkles, Plus,
   ClipboardList, Hash, Clock, MessageCircle, Filter, RotateCcw,
-  BookOpen, Award, CheckCircle2, ChevronDown, X, CalendarDays
+  BookOpen, Award, CheckCircle2, ChevronDown, X, CalendarDays, Eye
 } from 'lucide-react';
 import { useSiswaDetailQuery } from '@/hooks/queries/useSiswaQueries';
 import { useSubmitSessionLogMutation } from '@/hooks/queries/usePresensiQueries';
@@ -20,8 +20,16 @@ import { Label } from '@/components/atoms/Label';
 import { DatePicker } from '@/components/atoms/DatePicker';
 import { Modal } from '@/components/atoms/Modal';
 import { Skeleton } from '@/components/atoms/Skeleton';
+import { RichTextEditor } from '@/components/molecules/RichTextEditor';
 import { formatWaUrl } from '@/utils/formatters';
 import { format } from 'date-fns';
+
+function formatRichContent(text?: string): string {
+  if (!text) return '-';
+  const hasHtml = /<[a-z][\s\S]*>/i.test(text);
+  if (hasHtml) return text;
+  return text.replace(/\n/g, '<br />');
+}
 
 export default function DetailSiswaPage() {
   const params = useParams();
@@ -37,6 +45,8 @@ export default function DetailSiswaPage() {
   const [activeTab, setActiveTab] = useState<'progress' | 'presensi' | 'jadwal'>('progress');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [showFilterPicker, setShowFilterPicker] = useState(false);
+  const [selectedDetailLog, setSelectedDetailLog] = useState<any>(null);
+  const [isDiagnosaModalOpen, setIsDiagnosaModalOpen] = useState(false);
 
   // Date Filtering State (Mode: 'all' | 'month' | 'range')
   const [filterMode, setFilterMode] = useState<'all' | 'month' | 'range'>('all');
@@ -207,19 +217,32 @@ export default function DetailSiswaPage() {
             </div>
           </div>
 
-          {/* Action Button: Input Hasil Belajar */}
-          {canAddResult && (
+          {/* Action Buttons: Diagnosa Awal & Input Hasil Belajar */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <Button
-              variant="primary"
+              variant="outline"
               size="sm"
-              onClick={handleOpenForm}
-              className="shadow-xs text-xs font-bold h-8 sm:h-9 px-2.5 sm:px-4 rounded-xl shrink-0"
+              onClick={() => setIsDiagnosaModalOpen(true)}
+              className="shadow-2xs text-xs font-bold h-8 sm:h-9 px-2 sm:px-3 rounded-xl border-amber-300 bg-amber-50 text-amber-950 hover:bg-amber-100 transition cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5 sm:mr-1 text-amber-300" />
-              <span className="hidden sm:inline">Hasil Belajar</span>
-              <span className="sm:hidden text-[11px]">Hasil</span>
+              <ClipboardList className="w-3.5 h-3.5 sm:mr-1 text-amber-600" />
+              <span className="hidden sm:inline">Diagnosa Awal</span>
+              <span className="sm:hidden text-[11px]">Diagnosa</span>
             </Button>
-          )}
+
+            {canAddResult && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleOpenForm}
+                className="shadow-xs text-xs font-bold h-8 sm:h-9 px-2.5 sm:px-4 rounded-xl shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5 sm:mr-1 text-amber-300" />
+                <span className="hidden sm:inline">Hasil Belajar</span>
+                <span className="sm:hidden text-[11px]">Hasil</span>
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* ROW 2: TABS (LEFT) + COMPACT DATE FILTER (RIGHT) */}
@@ -449,25 +472,21 @@ export default function DetailSiswaPage() {
 
           <div>
             <Label required className="text-xs font-bold text-slate-700 mb-1">Materi & Kegiatan Belajar:</Label>
-            <textarea
-              required
-              rows={5}
+            <RichTextEditor
               value={activity}
-              onChange={(e) => setActivity(e.target.value)}
+              onChange={setActivity}
               placeholder="Contoh: Belajar Perkalian 1-10, membaca cerita pendek..."
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs"
+              minHeight="100px"
             />
           </div>
 
           <div>
-            <Label required className="text-xs font-bold text-slate-700 mb-1">Hasil & Catatan Perkembangan:</Label>
-            <textarea
-              required
-              rows={5}
+            <Label required className="text-xs font-bold text-slate-700 mb-1">Evaluasi / Hasil Belajar:</Label>
+            <RichTextEditor
               value={recommendation}
-              onChange={(e) => setRecommendation(e.target.value)}
+              onChange={setRecommendation}
               placeholder="Contoh: Ananda Bintang antusias, perkalian 5 sudah lancar..."
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs"
+              minHeight="100px"
             />
           </div>
 
@@ -488,10 +507,10 @@ export default function DetailSiswaPage() {
         <div className="space-y-3">
           {studentLogs.length > 0 ? (
             studentLogs.map((log: any) => (
-              <Card key={log.id} className="p-4 sm:p-5 space-y-3 bg-white border border-slate-200/90 shadow-2xs hover:border-emerald-300 transition rounded-2xl">
+              <Card key={log.id} className="p-3.5 sm:p-4 space-y-2.5 bg-white border border-slate-200/90 shadow-2xs hover:border-emerald-300 transition rounded-2xl">
                 {/* Session Timeline Header */}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
                     <Avatar src={log.teacher_photo} name={log.teacher_name} size="sm" className="ring-2 ring-emerald-500/30" />
                     <div>
                       <h3 className="font-extrabold text-slate-900 text-xs sm:text-sm">{log.teacher_name}</h3>
@@ -515,29 +534,44 @@ export default function DetailSiswaPage() {
                   </div>
                 </div>
 
-                {/* 2-Column Outcome Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  {/* Left: Materi Belajar */}
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1">
+                {/* Compact Preview Row & Action Button */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                  {/* Left Preview: Materi Belajar */}
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 space-y-0.5">
                     <div className="flex items-center gap-1 font-bold uppercase tracking-wider text-[10px] text-slate-500">
                       <BookOpen className="w-3 h-3 text-emerald-600" />
                       <span>Materi & Aktivitas Belajar:</span>
                     </div>
-                    <p className="text-slate-800 font-semibold leading-relaxed">
-                      {log.activities}
-                    </p>
+                    <div
+                      className="rich-text-content text-slate-800 font-normal text-xs line-clamp-1"
+                      dangerouslySetInnerHTML={{ __html: formatRichContent(log.activities) }}
+                    />
                   </div>
 
-                  {/* Right: Hasil & Perkembangan (Vibrant Gradient Box) */}
-                  <div className="p-3.5 rounded-xl bg-gradient-to-br from-emerald-50/90 via-teal-50/80 to-amber-50/60 border border-emerald-200/90 space-y-1">
+                  {/* Right Preview: Evaluasi */}
+                  <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 space-y-0.5">
                     <div className="flex items-center gap-1 font-bold uppercase tracking-wider text-[10px] text-emerald-900">
                       <Sparkles className="w-3 h-3 text-amber-500 fill-amber-400" />
-                      <span>Hasil & Catatan Perkembangan:</span>
+                      <span>Evaluasi :</span>
                     </div>
-                    <p className="text-emerald-950 font-bold leading-relaxed">
-                      "{log.results_recommendations}"
-                    </p>
+                    <div
+                      className="rich-text-content text-emerald-950 font-normal text-xs line-clamp-1 italic"
+                      dangerouslySetInnerHTML={{ __html: formatRichContent(log.results_recommendations) }}
+                    />
                   </div>
+                </div>
+
+                {/* Open Modal Detail Action Button */}
+                <div className="pt-1 flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedDetailLog(log)}
+                    className="h-8 text-xs font-bold px-3 rounded-xl border-emerald-300 text-emerald-800 bg-emerald-50/50 hover:bg-emerald-100 transition cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                    <span>Lihat Detail Catatan Pembelajaran</span>
+                  </Button>
                 </div>
               </Card>
             ))
@@ -554,6 +588,132 @@ export default function DetailSiswaPage() {
           )}
         </div>
       )}
+
+      {/* DETAIL CATATAN PEMBELAJARAN MODAL */}
+      <Modal
+        isOpen={Boolean(selectedDetailLog)}
+        onClose={() => setSelectedDetailLog(null)}
+        title="Detail Catatan Pembelajaran Sesi"
+        icon={FileText}
+        maxWidth="lg"
+      >
+        {selectedDetailLog && (
+          <div className="space-y-4">
+            {/* Header Information Box */}
+            <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 text-xs flex flex-wrap items-center justify-between gap-2">
+              <div className="space-y-0.5">
+                <p className="text-emerald-950">
+                  <strong>Guru Pengajar:</strong> {selectedDetailLog.teacher_name}
+                </p>
+                <p className="text-emerald-950">
+                  <strong>Siswa:</strong> {student.name} ({student.grade})
+                </p>
+              </div>
+              <div className="text-right font-mono text-[11px] text-emerald-800">
+                <p className="font-bold">Pertemuan ke-{selectedDetailLog.session_number || 1}</p>
+                <p>Tanggal: {selectedDetailLog.session_date}</p>
+                <p>{selectedDetailLog.start_time} - {selectedDetailLog.end_time} WIB</p>
+              </div>
+            </div>
+
+            {/* 2-Column Full Content Details */}
+            <div className="space-y-3.5">
+              {/* Materi & Aktivitas Belajar */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs text-slate-700 border-b border-slate-200/80 pb-2">
+                  <BookOpen className="w-4 h-4 text-emerald-600" />
+                  <span>Materi & Aktivitas Belajar:</span>
+                </div>
+                <div
+                  className="rich-text-content text-slate-800 font-normal text-xs sm:text-sm leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: formatRichContent(selectedDetailLog.activities) }}
+                />
+              </div>
+
+              {/* Evaluasi & Hasil Belajar */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/90 to-amber-50/70 border border-emerald-200 space-y-2">
+                <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs text-emerald-900 border-b border-emerald-200/80 pb-2">
+                  <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400" />
+                  <span>Evaluasi & Hasil Belajar:</span>
+                </div>
+                <div
+                  className="rich-text-content text-emerald-950 font-normal text-xs sm:text-sm leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: formatRichContent(selectedDetailLog.results_recommendations) }}
+                />
+              </div>
+            </div>
+
+            {/* Footer Modal Action */}
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedDetailLog(null)}
+                className="h-9 text-xs font-bold px-4 rounded-xl"
+              >
+                Tutup
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* DIAGNOSA AWAL & CATATAN KEBUTUHAN SISWA MODAL */}
+      <Modal
+        isOpen={isDiagnosaModalOpen}
+        onClose={() => setIsDiagnosaModalOpen(false)}
+        title="Diagnosa Awal & Catatan Kebutuhan Siswa"
+        icon={ClipboardList}
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-amber-50/90 p-3 rounded-2xl border border-amber-200/90 text-xs flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-amber-950 font-bold text-xs sm:text-sm">{student.name}</p>
+              <p className="text-amber-800 text-[11px] font-medium">{student.grade} • Wali: {student.parent_name}</p>
+            </div>
+            {student.parent_phone && student.parent_phone !== '-' && (
+              <a
+                href={formatWaUrl(student.parent_phone)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-800 font-mono text-[11px] font-bold flex items-center gap-1 hover:underline"
+              >
+                <MessageCircle className="w-3 h-3 text-emerald-600" />
+                <span>{student.parent_phone}</span>
+              </a>
+            )}
+          </div>
+
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/70 via-orange-50/50 to-amber-100/40 border border-amber-200 space-y-2">
+            <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-xs text-amber-950 border-b border-amber-200/80 pb-2">
+              <ClipboardList className="w-4 h-4 text-amber-600" />
+              <span>Hasil Diagnosa / Catatan Kebutuhan Belajar:</span>
+            </div>
+            {student.notes ? (
+              <div
+                className="rich-text-content text-slate-800 font-normal text-xs sm:text-sm leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: formatRichContent(student.notes) }}
+              />
+            ) : (
+              <p className="text-xs text-slate-400 italic py-3 text-center">
+                Belum ada catatan hasil diagnosa awal khusus untuk siswa ini.
+              </p>
+            )}
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDiagnosaModalOpen(false)}
+              className="h-9 text-xs font-bold px-4 rounded-xl"
+            >
+              Tutup
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* TAB 2: RIWAYAT PRESENSI SISWA */}
       {activeTab === 'presensi' && (

@@ -36,7 +36,15 @@ import { Modal } from '@/components/atoms/Modal';
 import { TablePagination } from '@/components/molecules/TablePagination';
 import { SkeletonTable, Skeleton } from '@/components/atoms/Skeleton';
 import { ImageUpload } from '@/components/molecules/ImageUpload';
+import { RichTextEditor } from '@/components/molecules/RichTextEditor';
 import { formatWaUrl } from '@/utils/formatters';
+
+function formatRichContent(text?: string): string {
+  if (!text) return '-';
+  const hasHtml = /<[a-z][\s\S]*>/i.test(text);
+  if (hasHtml) return text;
+  return text.replace(/\n/g, '<br />');
+}
 
 export default function DataSiswaPage() {
   const router = useRouter();
@@ -367,8 +375,8 @@ export default function DataSiswaPage() {
     );
     return cols;
   },
-  [router, deleteSiswaMutation, can, isBulkMode, selectedIds, students]
-);
+    [router, deleteSiswaMutation, can, isBulkMode, selectedIds, students]
+  );
 
   const table = useReactTable({
     data: students,
@@ -410,7 +418,7 @@ export default function DataSiswaPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto w-full sm:w-auto">
+        <div className="flex flex-col md:flex-row items-center gap-2 ml-auto w-full sm:w-auto">
           <div className="w-full sm:w-64">
             <Input
               icon={Search}
@@ -421,31 +429,34 @@ export default function DataSiswaPage() {
           </div>
 
           {can('create', 'siswa') && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (isBulkMode) {
-                    setIsBulkMode(false);
-                    setSelectedIds([]);
-                  } else {
-                    setIsBulkMode(true);
-                  }
-                }}
-                className={`shadow-xs text-xs font-bold h-9 px-3 rounded-xl shrink-0 ${
-                  isBulkMode
+            <div className="flex items-center gap-2 w-full">
+              <div className='flex w-full'>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (isBulkMode) {
+                      setIsBulkMode(false);
+                      setSelectedIds([]);
+                    } else {
+                      setIsBulkMode(true);
+                    }
+                  }}
+                  className={`w-full shadow-xs text-xs font-bold h-9 px-3 rounded-xl shrink-0 ${isBulkMode
                     ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
                     : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <CheckSquare className="w-3.5 h-3.5 mr-1" />
-                {isBulkMode ? 'Tutup Mode Massal' : 'Pilih Massal'}
-              </Button>
+                    }`}
+                >
+                  <CheckSquare className="w-3.5 h-3.5 mr-1" />
+                  {isBulkMode ? 'Tutup Mode Massal' : 'Pilih Massal'}
+                </Button>
+              </div>
+              <div className='flex w-full'>
+                <Button variant="primary" size="sm" onClick={() => setIsFormOpen(!isFormOpen)} className="w-full shadow-xs text-xs font-bold h-9 px-4 rounded-xl shrink-0">
+                  <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Siswa
+                </Button>
+              </div>
 
-              <Button variant="primary" size="sm" onClick={() => setIsFormOpen(!isFormOpen)} className="shadow-xs text-xs font-bold h-9 px-4 rounded-xl shrink-0">
-                <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Siswa
-              </Button>
             </div>
           )}
         </div>
@@ -548,11 +559,10 @@ export default function DataSiswaPage() {
                       type="button"
                       disabled={isUploadingPhoto}
                       onClick={() => setParentMode('select')}
-                      className={`text-xs font-bold px-2.5 py-1 rounded-lg transition ${
-                        parentMode === 'select'
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
+                      className={`text-xs font-bold px-2.5 py-1 rounded-lg transition ${parentMode === 'select'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
                     >
                       Pilih Yang Ada
                     </button>
@@ -560,11 +570,10 @@ export default function DataSiswaPage() {
                       type="button"
                       disabled={isUploadingPhoto}
                       onClick={() => setParentMode('new')}
-                      className={`text-xs font-bold px-2.5 py-1 rounded-lg transition ${
-                        parentMode === 'new'
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
+                      className={`text-xs font-bold px-2.5 py-1 rounded-lg transition ${parentMode === 'new'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
                     >
                       + Buat Wali Baru
                     </button>
@@ -597,7 +606,12 @@ export default function DataSiswaPage() {
 
               <div className="sm:col-span-2">
                 <Label>Catatan Khusus Belajar / Kebutuhan Siswa:</Label>
-                <Input value={sNotes} onChange={(e) => setSNotes(e.target.value)} placeholder="Perlu bimbingan ekstra matematika dasar" disabled={isUploadingPhoto} />
+                <RichTextEditor
+                  value={sNotes}
+                  onChange={setSNotes}
+                  placeholder="Contoh: Perlu bimbingan ekstra matematika dasar, fokus latihan membaca..."
+                  minHeight="90px"
+                />
               </div>
 
               <div className="sm:col-span-2 flex justify-end gap-2 pt-3 border-t border-slate-100">
@@ -646,8 +660,13 @@ export default function DataSiswaPage() {
               />
             </div>
             <div>
-              <Label>Catatan Belajar:</Label>
-              <Input value={editNotes} onChange={(e) => setEditNotes(e.target.value)} disabled={isUploadingPhoto} />
+              <Label>Catatan Khusus Belajar / Kebutuhan Siswa:</Label>
+              <RichTextEditor
+                value={editNotes}
+                onChange={setEditNotes}
+                placeholder="Contoh: Perlu bimbingan ekstra matematika dasar..."
+                minHeight="90px"
+              />
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
@@ -697,9 +716,8 @@ export default function DataSiswaPage() {
                             router.push(`/data-siswa/${row.original.id}`);
                           }
                         }}
-                        className={`hover:bg-emerald-50/40 cursor-pointer transition group ${
-                          selectedIds.includes(row.original.id) ? 'bg-emerald-50/60' : ''
-                        }`}
+                        className={`hover:bg-emerald-50/40 cursor-pointer transition group ${selectedIds.includes(row.original.id) ? 'bg-emerald-50/60' : ''
+                          }`}
                       >
                         {row.getVisibleCells().map((cell) => (
                           <td key={cell.id} className="px-3.5 py-2.5 align-middle">
@@ -735,11 +753,10 @@ export default function DataSiswaPage() {
                       router.push(`/data-siswa/${std.id}`);
                     }
                   }}
-                  className={`p-4 space-y-3 bg-white border transition cursor-pointer rounded-2xl ${
-                    selectedIds.includes(std.id)
-                      ? 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-400/40'
-                      : 'border-slate-200 hover:border-emerald-300'
-                  }`}
+                  className={`p-4 space-y-3 bg-white border transition cursor-pointer rounded-2xl ${selectedIds.includes(std.id)
+                    ? 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-400/40'
+                    : 'border-slate-200 hover:border-emerald-300'
+                    }`}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -782,11 +799,7 @@ export default function DataSiswaPage() {
                     <p className="font-semibold text-slate-800">{std.parent_name || 'Belum Ditautkan'}</p>
                   </div>
 
-                  {std.notes && (
-                    <p className="text-[11px] text-amber-900 italic font-medium bg-amber-50 p-2 rounded-lg border border-amber-100">
-                      "{std.notes}"
-                    </p>
-                  )}
+
 
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                     <Button

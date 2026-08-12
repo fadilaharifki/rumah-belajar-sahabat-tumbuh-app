@@ -78,3 +78,55 @@
     color: black !important;
   }
 }
+
+/* Tiptap & Rich Text HTML Styles (Bullet, Numbering, Heading, Quote) */
+.tiptap, .rich-text-content {
+  font-weight: 400 !important;
+
+  strong, b {
+    font-weight: 600 !important;
+    color: #0f172a;
+  }
+  ul {
+    list-style-type: disc !important;
+    padding-left: 1.25rem !important;
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+  ol {
+    list-style-type: decimal !important;
+    padding-left: 1.25rem !important;
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+  li {
+    margin-top: 0.125rem !important;
+    margin-bottom: 0.125rem !important;
+    font-weight: 400 !important;
+  }
+  blockquote {
+    border-left: 3px solid #059669 !important;
+    padding-left: 0.75rem !important;
+    color: #334155 !important;
+    font-style: italic !important;
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+  h3 {
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    color: #0f172a !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+  p {
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.25rem !important;
+    font-weight: 400 !important;
+    min-height: 1.25rem;
+  }
+  p:empty::before,
+  p > br:only-child::before {
+    content: "\00a0";
+  }
+}
