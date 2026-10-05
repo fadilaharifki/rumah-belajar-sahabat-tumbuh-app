@@ -19,6 +19,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = Number(searchParams.get('page')) || 0;
     const limit = Number(searchParams.get('limit')) || 0;
+    const status = searchParams.get('status');
     const sortBy = searchParams.get('sort_by') || 'created_at';
     const isAscending = searchParams.get('sort_order') !== 'desc';
 
@@ -32,13 +33,41 @@ export async function GET(request: Request) {
       .select('*, parents(id, name, phone, email)', { count: 'exact' })
       .order(dbSortColumn, { ascending: isAscending });
 
+    // Filter soft-deleted students or query Terhapus students
+    if (status === 'Terhapus') {
+      query = query.or('is_deleted.eq.true,deleted_at.not.is.null');
+    } else {
+      query = query.is('deleted_at', null).eq('is_deleted', false);
+      if (status && status !== 'Semua') {
+        query = query.eq('status', status);
+      }
+    }
+
     if (page > 0 && limit > 0) {
       const from = (page - 1) * limit;
       const to = from + limit - 1;
       query = query.range(from, to);
     }
 
-    const { data, error, count } = await query;
+    let { data, error, count } = await query;
+
+    // Graceful fallback if deleted_at column is not yet migrated in Supabase
+    if (error && (error.message?.includes('deleted_at') || error.code === '42703')) {
+      let fallbackQuery = supabase
+        .from('students')
+        .select('*, parents(id, name, phone, email)', { count: 'exact' })
+        .order(dbSortColumn, { ascending: isAscending });
+
+      if (page > 0 && limit > 0) {
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
+        fallbackQuery = fallbackQuery.range(from, to);
+      }
+      const fallbackRes = await fallbackQuery;
+      data = fallbackRes.data;
+      error = fallbackRes.error;
+      count = fallbackRes.count;
+    }
 
     if (error) {
       console.warn('Supabase students query error:', error.message);
@@ -54,6 +83,9 @@ export async function GET(request: Request) {
       parent_name: s.parents?.name || 'Belum Dihubungkan',
       parent_phone: s.parents?.phone || '-',
       parent_email: s.parents?.email || '-',
+      status: s.status || 'Aktif',
+      is_deleted: Boolean(s.is_deleted || s.deleted_at),
+      deleted_at: s.deleted_at || null,
       notes: s.notes || '-',
       avatar_url: s.avatar_url || s.photo_url || ''
     }));
@@ -151,6 +183,8 @@ export async function POST(request: Request) {
         nickname: nickname || name.split(' ')[0],
         grade,
         parent_id: targetParentId,
+        status: body.status || 'Aktif',
+        is_deleted: false,
         notes: notes || 'Belajar dengan semangat',
         avatar_url: avatar_url || ''
       };
@@ -228,13 +262,39 @@ export async function DELETE(request: Request) {
     }
 
     if (isSupabaseConfigured) {
-      const { error } = await supabase.from('students').delete().in('id', ids);
-      if (error) throw error;
+      // Soft Delete: Mark is_deleted = true, deleted_at, and status = 'Nonaktif'
+      let { error } = await supabase
+        .from('students')
+        .update({
+          is_deleted: true,
+          deleted_at: new Date().toISOString(),
+          status: 'Nonaktif'
+        })
+        .in('id', ids);
+
+      // Fallback if is_deleted column is not yet migrated in Supabase
+      if (error && (error.message?.includes('is_deleted') || error.code === '42703')) {
+        const fallbackRes = await supabase
+          .from('students')
+          .update({
+            deleted_at: new Date().toISOString(),
+            status: 'Nonaktif'
+          })
+          .in('id', ids);
+        error = fallbackRes.error;
+      }
+
+      // Fallback to hard delete if deleted_at column is also not yet migrated
+      if (error && (error.message?.includes('deleted_at') || error.code === '42703')) {
+        await supabase.from('students').delete().in('id', ids);
+      } else if (error) {
+        throw error;
+      }
     }
 
     return NextResponse.json({
       success: true,
-      message: `${ids.length} data siswa berhasil dihapus.`
+      message: `${ids.length} data siswa berhasil dinonaktifkan (soft delete).`
     });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

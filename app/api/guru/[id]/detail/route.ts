@@ -66,7 +66,15 @@ export async function GET(
       .eq('teacher_id', id)
       .order('start_time');
 
-    const formattedSchedules = (schedulesData || []).map((sch: any) => ({
+    const activeSchedulesData = (schedulesData || []).filter((sch: any) => {
+      if (sch.students) {
+        if (sch.students.is_deleted || sch.students.deleted_at) return false;
+        if (sch.students.status === 'Nonaktif') return false;
+      }
+      return true;
+    });
+
+    const formattedSchedules = activeSchedulesData.map((sch: any) => ({
       id: sch.id,
       teacher_id: sch.teacher_id,
       teacher_name: teacher.name,
@@ -82,7 +90,7 @@ export async function GET(
       status: sch.status || 'Aktif'
     }));
 
-    let assignedStudents = (schedulesData || []).map((sch: any) => ({
+    let assignedStudents = activeSchedulesData.map((sch: any) => ({
       id: sch.students?.id || sch.id,
       name: sch.students?.name || 'Siswa Bimbingan',
       grade: sch.students?.grade || 'SD',
@@ -92,11 +100,14 @@ export async function GET(
       avatar_url: sch.students?.avatar_url || ''
     }));
 
-    // Fallback: If no schedules assigned yet, fetch all students to display options
+    // Fallback: If no schedules assigned yet, fetch active students to display options
     if (assignedStudents.length === 0) {
       const { data: allStudents } = await supabase
         .from('students')
         .select('*, parents(name, phone, email)')
+        .is('deleted_at', null)
+        .eq('is_deleted', false)
+        .eq('status', 'Aktif')
         .limit(10);
 
       assignedStudents = (allStudents || []).map((std: any) => ({

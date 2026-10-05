@@ -22,8 +22,18 @@ export async function PUT(
       if (nickname) updateData.nickname = nickname;
       if (grade) updateData.grade = grade;
       if (parent_id) updateData.parent_id = parent_id;
+      if (body.status) updateData.status = body.status;
       if (notes !== undefined) updateData.notes = notes;
       if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
+      if (body.restore || body.is_deleted === false) {
+        updateData.is_deleted = false;
+        updateData.deleted_at = null;
+        updateData.status = 'Aktif';
+      } else if (body.is_deleted === true) {
+        updateData.is_deleted = true;
+        updateData.deleted_at = new Date().toISOString();
+        updateData.status = 'Nonaktif';
+      }
 
       let { data, error } = await supabase
         .from('students')
@@ -59,6 +69,9 @@ export async function PUT(
           parent_name: data.parents?.name || 'Belum Dihubungkan',
           parent_phone: data.parents?.phone || '-',
           parent_email: data.parents?.email || '-',
+          status: data.status || 'Aktif',
+          is_deleted: Boolean(data.is_deleted || data.deleted_at),
+          deleted_at: data.deleted_at || null,
           notes: data.notes,
           avatar_url: data.avatar_url || data.photo_url || ''
         },
@@ -72,7 +85,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/siswa/[id] - Remove student record
+// DELETE /api/siswa/[id] - Soft remove student record (marks is_deleted = true, deleted_at & status 'Nonaktif')
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -81,11 +94,37 @@ export async function DELETE(
     const { id } = await params;
 
     if (isSupabaseConfigured) {
-      const { error } = await supabase.from('students').delete().eq('id', id);
-      if (error) throw error;
+      // Soft Delete: update is_deleted = true, deleted_at and set status to 'Nonaktif'
+      let { error } = await supabase
+        .from('students')
+        .update({
+          is_deleted: true,
+          deleted_at: new Date().toISOString(),
+          status: 'Nonaktif'
+        })
+        .eq('id', id);
+
+      // Fallback if is_deleted column is not yet migrated in Supabase
+      if (error && (error.message?.includes('is_deleted') || error.code === '42703')) {
+        const fallbackRes = await supabase
+          .from('students')
+          .update({
+            deleted_at: new Date().toISOString(),
+            status: 'Nonaktif'
+          })
+          .eq('id', id);
+        error = fallbackRes.error;
+      }
+
+      // Fallback to hard delete if deleted_at column is not yet migrated in Supabase
+      if (error && (error.message?.includes('deleted_at') || error.code === '42703')) {
+        await supabase.from('students').delete().eq('id', id);
+      } else if (error) {
+        throw error;
+      }
     }
 
-    return NextResponse.json({ success: true, message: 'Data siswa berhasil dihapus.' });
+    return NextResponse.json({ success: true, message: 'Data siswa berhasil dinonaktifkan (soft delete).' });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

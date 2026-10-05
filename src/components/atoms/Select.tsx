@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Search, X, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -39,8 +40,16 @@ export const Select: React.FC<SelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [dropdownCoords, setDropdownCoords] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  }>({ left: 0, width: 0, maxHeight: 240 });
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Normalize selected values as an array for unified handling
@@ -61,16 +70,79 @@ export const Select: React.FC<SelectProps> = ({
     );
   }, [options, searchQuery]);
 
-  // Close dropdown on outside click
+  // Calculate coordinates for portal floating dropdown (avoids modal/card overflow clipping)
+  const updateCoords = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const DROPDOWN_PREFERRED_HEIGHT = 240;
+
+    // Open upward if space below is limited and space above is larger
+    const openUpward = spaceBelow < DROPDOWN_PREFERRED_HEIGHT && spaceAbove > spaceBelow;
+
+    const maxHeight = Math.min(
+      DROPDOWN_PREFERRED_HEIGHT,
+      Math.max(140, openUpward ? spaceAbove - 16 : spaceBelow - 16)
+    );
+
+    if (openUpward) {
+      setDropdownCoords({
+        bottom: window.innerHeight - rect.top + 6,
+        left: rect.left,
+        width: rect.width,
+        maxHeight,
+      });
+    } else {
+      setDropdownCoords({
+        top: rect.bottom + 6,
+        left: rect.left,
+        width: rect.width,
+        maxHeight,
+      });
+    }
+  }, []);
+
+  // Update position on open, resize, or scroll
   useEffect(() => {
+    if (isOpen) {
+      updateCoords();
+      const onResizeOrScroll = () => updateCoords();
+      window.addEventListener('resize', onResizeOrScroll);
+      window.addEventListener('scroll', onResizeOrScroll, true);
+      return () => {
+        window.removeEventListener('resize', onResizeOrScroll);
+        window.removeEventListener('scroll', onResizeOrScroll, true);
+      };
+    }
+  }, [isOpen, updateCoords]);
+
+  // Close dropdown on outside click or Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    if (isSearchable) {
       setTimeout(() => {
         searchInputRef.current?.focus();
       }, 50);
@@ -78,8 +150,9 @@ export const Select: React.FC<SelectProps> = ({
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, isSearchable]);
 
   // Handle single selection
   const handleSelect = (optionValue: string) => {
@@ -177,64 +250,80 @@ export const Select: React.FC<SelectProps> = ({
               <X className="w-3.5 h-3.5" />
             </button>
           )}
-          <ChevronDown className={clsx('w-4 h-4 transition transform', isOpen && 'rotate-180 text-emerald-600')} />
+          <ChevronDown className={clsx('w-4 h-4 transition transform duration-200', isOpen && 'rotate-180 text-emerald-600')} />
         </div>
       </div>
 
-      {/* Popover Dropdown List */}
-      {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-2xl p-2 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 space-y-1.5 max-h-56 flex flex-col">
-          {/* Search Bar inside Popover */}
-          {isSearchable && (
-            <div className="relative shrink-0">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari..."
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 focus:border-emerald-500"
-              />
-            </div>
-          )}
-
-          {/* Options List */}
-          <div className="flex-1 overflow-y-auto space-y-1 pr-0.5 scrollbar-thin">
-            {filteredOptions.length > 0 ? (
-              filteredOptions.map((opt) => {
-                const optValStr = String(opt.value);
-                const isSelected = selectedValues.includes(optValStr);
-
-                return (
-                  <div
-                    key={opt.value}
-                    onClick={() => handleSelect(optValStr)}
-                    className={clsx(
-                      'flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition text-xs font-semibold',
-                      isSelected
-                        ? 'bg-emerald-50 text-emerald-950 font-bold border border-emerald-200'
-                        : 'hover:bg-slate-100 text-slate-700'
-                    )}
-                  >
-                    <div className="flex flex-col min-w-0">
-                      <span className="truncate">{opt.label}</span>
-                      {opt.subLabel && (
-                        <span className="text-[10px] text-slate-400 font-normal truncate">{opt.subLabel}</span>
-                      )}
-                    </div>
-                    {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
-                  </div>
-                );
-              })
-            ) : (
-              <div className="p-4 text-center text-slate-400 font-medium text-xs">
-                Tidak ada pilihan yang cocok.
+      {/* Popover Dropdown List mounted via React Portal (Never gets clipped by modals or overflow containers) */}
+      {isOpen &&
+        typeof window !== 'undefined' &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            style={{
+              position: 'fixed',
+              left: `${dropdownCoords.left}px`,
+              top: dropdownCoords.top !== undefined ? `${dropdownCoords.top}px` : undefined,
+              bottom: dropdownCoords.bottom !== undefined ? `${dropdownCoords.bottom}px` : undefined,
+              width: `${dropdownCoords.width}px`,
+              maxHeight: `${dropdownCoords.maxHeight}px`,
+              zIndex: 999999,
+            }}
+            className="bg-white rounded-2xl p-2 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 space-y-1.5 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Search Bar inside Popover */}
+            {isSearchable && (
+              <div className="relative shrink-0">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari..."
+                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
               </div>
             )}
-          </div>
-        </div>
-      )}
+
+            {/* Options List */}
+            <div className="flex-1 overflow-y-auto space-y-1 pr-0.5 scrollbar-thin">
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((opt) => {
+                  const optValStr = String(opt.value);
+                  const isSelected = selectedValues.includes(optValStr);
+
+                  return (
+                    <div
+                      key={opt.value}
+                      onClick={() => handleSelect(optValStr)}
+                      className={clsx(
+                        'flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition text-xs font-semibold',
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-950 font-bold border border-emerald-200'
+                          : 'hover:bg-slate-100 text-slate-700'
+                      )}
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate">{opt.label}</span>
+                        {opt.subLabel && (
+                          <span className="text-[10px] text-slate-400 font-normal truncate">{opt.subLabel}</span>
+                        )}
+                      </div>
+                      {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-4 text-center text-slate-400 font-medium text-xs">
+                  Tidak ada pilihan yang cocok.
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

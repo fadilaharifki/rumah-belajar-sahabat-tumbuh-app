@@ -74,11 +74,13 @@ export default function PresensiPage() {
   }, [teachers]);
 
   const studentOptions = useMemo(() => {
-    return students.map((st) => ({
-      value: st.id,
-      label: st.name,
-      subLabel: st.grade
-    }));
+    return students
+      .filter((st) => st.status !== 'Nonaktif' && !st.is_deleted)
+      .map((st) => ({
+        value: st.id,
+        label: st.name,
+        subLabel: st.grade
+      }));
   }, [students]);
 
   const checkInMutation = useCheckInMutation();

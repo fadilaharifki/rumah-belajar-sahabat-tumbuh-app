@@ -10,20 +10,24 @@ export interface StudentItem {
   parent_name: string;
   parent_phone: string;
   parent_email: string;
+  status: 'Aktif' | 'Nonaktif';
+  is_deleted?: boolean;
+  deleted_at?: string | null;
   notes: string;
   avatar_url?: string;
 }
 
 export const SISWA_QUERY_KEY = ['siswa'];
 
-// Hook for fetching all Siswa (Students) with BE sorting support
-export function useSiswaQuery(sortBy?: string, sortOrder?: 'asc' | 'desc') {
+// Hook for fetching all Siswa (Students) with BE sorting support and optional status filter
+export function useSiswaQuery(sortBy?: string, sortOrder?: 'asc' | 'desc', status?: string) {
   return useQuery<StudentItem[]>({
-    queryKey: ['siswa', sortBy || '', sortOrder || ''],
+    queryKey: ['siswa', sortBy || '', sortOrder || '', status || ''],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (sortBy) params.append('sort_by', sortBy);
       if (sortOrder) params.append('sort_order', sortOrder);
+      if (status && status !== 'Semua') params.append('status', status);
       const queryStr = params.toString() ? `?${params.toString()}` : '';
 
       const res = await fetch(`/api/siswa${queryStr}`);
@@ -85,6 +89,7 @@ export function useCreateSiswaMutation() {
       parent_id?: string;
       new_parent_name?: string;
       new_parent_phone?: string;
+      status?: 'Aktif' | 'Nonaktif';
       notes?: string;
       avatar_url?: string;
     }) => {
@@ -126,8 +131,11 @@ export function useUpdateSiswaMutation() {
       nickname?: string;
       grade?: string;
       parent_id?: string;
+      status?: 'Aktif' | 'Nonaktif';
       notes?: string;
       avatar_url?: string;
+      restore?: boolean;
+      is_deleted?: boolean;
     }) => {
       const res = await fetch(`/api/siswa/${id}`, {
         method: 'PUT',
@@ -145,10 +153,40 @@ export function useUpdateSiswaMutation() {
       queryClient.invalidateQueries({ queryKey: ['siswa-infinite'] });
       queryClient.invalidateQueries({ queryKey: ['siswa-detail'] });
       queryClient.invalidateQueries({ queryKey: ['wali'] });
+      queryClient.invalidateQueries({ queryKey: ['jadwal'] });
       toast.success(data?.message || 'Data siswa berhasil diperbarui!');
     },
     onError: (err: any) => {
       toast.error(err.message || 'Gagal memperbarui data siswa!');
+    }
+  });
+}
+
+// Hook for restoring soft-deleted Siswa
+export function useRestoreSiswaMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/siswa/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restore: true })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Gagal memulihkan data siswa');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: SISWA_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['siswa-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['jadwal'] });
+      toast.success('Data siswa berhasil dipulihkan!');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal memulihkan data siswa!');
     }
   });
 }

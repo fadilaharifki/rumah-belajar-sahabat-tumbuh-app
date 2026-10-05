@@ -12,7 +12,7 @@ import {
   ColumnDef,
   SortingState
 } from '@tanstack/react-table';
-import { ShieldCheck, UserPlus, Search, Phone, Eye, Edit3, Trash2, ArrowUpDown, ArrowUp, ArrowDown, User, CheckSquare, AlertTriangle, ChevronRight, Filter, GraduationCap, Plus, ClipboardList } from 'lucide-react';
+import { ShieldCheck, UserPlus, Search, Phone, Eye, Edit3, Trash2, ArrowUpDown, ArrowUp, ArrowDown, User, CheckSquare, AlertTriangle, ChevronRight, Filter, GraduationCap, Plus, ClipboardList, RotateCcw, Archive } from 'lucide-react';
 import {
   useSiswaQuery,
   useInfiniteSiswaQuery,
@@ -20,6 +20,7 @@ import {
   useUpdateSiswaMutation,
   useDeleteSiswaMutation,
   useBulkDeleteSiswaMutation,
+  useRestoreSiswaMutation,
   StudentItem
 } from '@/hooks/queries/useSiswaQueries';
 import { useWaliQuery } from '@/hooks/queries/useWaliQueries';
@@ -54,9 +55,11 @@ export default function DataSiswaPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const activeSortBy = sorting[0]?.id;
   const activeSortOrder = sorting[0] ? (sorting[0].desc ? 'desc' : 'asc') : undefined;
+  const [statusFilter, setStatusFilter] = useState<'Semua' | 'Aktif' | 'Nonaktif' | 'Terhapus'>('Semua');
 
-  // TanStack Query Hooks for Siswa & Wali with BE sorting
-  const { data: allStudents = [], isLoading } = useSiswaQuery(activeSortBy, activeSortOrder);
+  // TanStack Query Hooks for Siswa & Wali with BE sorting & status filter
+  const backendStatus = statusFilter === 'Terhapus' ? 'Terhapus' : undefined;
+  const { data: allStudents = [], isLoading } = useSiswaQuery(activeSortBy, activeSortOrder, backendStatus);
   const {
     data: infiniteData,
     fetchNextPage,
@@ -77,6 +80,7 @@ export default function DataSiswaPage() {
   const createSiswaMutation = useCreateSiswaMutation();
   const updateSiswaMutation = useUpdateSiswaMutation();
   const deleteSiswaMutation = useDeleteSiswaMutation();
+  const restoreSiswaMutation = useRestoreSiswaMutation();
 
   const [globalFilter, setGlobalFilter] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -93,6 +97,7 @@ export default function DataSiswaPage() {
   const [sName, setSName] = useState('');
   const [sGrade, setSGrade] = useState('SD Kelas 1');
   const [sParentId, setSParentId] = useState('');
+  const [sStatus, setSStatus] = useState<'Aktif' | 'Nonaktif'>('Aktif');
   const [sNotes, setSNotes] = useState('');
   const [sAvatarUrl, setSAvatarUrl] = useState('');
 
@@ -104,16 +109,27 @@ export default function DataSiswaPage() {
   const [editName, setEditName] = useState('');
   const [editGrade, setEditGrade] = useState('');
   const [editParentId, setEditParentId] = useState('');
+  const [editStatus, setEditStatus] = useState<'Aktif' | 'Nonaktif'>('Aktif');
   const [editNotes, setEditNotes] = useState('');
   const [editAvatarUrl, setEditAvatarUrl] = useState('');
 
   // Role-Based Data Scoping Filter for Desktop
   const students = useMemo(() => {
+    let list = allStudents;
     if (user?.role === 'parent' && user?.parent_id) {
-      return allStudents.filter((st) => st.parent_id === user.parent_id);
+      list = list.filter((st) => st.parent_id === user.parent_id);
     }
-    return allStudents;
-  }, [allStudents, user]);
+    if (statusFilter === 'Aktif') {
+      return list.filter((st) => st.status === 'Aktif' && !st.is_deleted);
+    }
+    if (statusFilter === 'Nonaktif') {
+      return list.filter((st) => st.status === 'Nonaktif' && !st.is_deleted);
+    }
+    if (statusFilter === 'Terhapus') {
+      return list.filter((st) => st.is_deleted || Boolean(st.deleted_at));
+    }
+    return list.filter((st) => !st.is_deleted);
+  }, [allStudents, user, statusFilter]);
 
   // Combined Infinite Scroll Items for Mobile View
   const mobileStudents = useMemo(() => {
@@ -143,6 +159,7 @@ export default function DataSiswaPage() {
       await createSiswaMutation.mutateAsync({
         name: sName,
         grade: sGrade,
+        status: sStatus,
         parent_id: sParentId || undefined,
         notes: sNotes || undefined,
         avatar_url: sAvatarUrl || undefined
@@ -151,6 +168,7 @@ export default function DataSiswaPage() {
       await createSiswaMutation.mutateAsync({
         name: sName,
         grade: sGrade,
+        status: sStatus,
         new_parent_name: newParentName,
         new_parent_phone: newParentPhone,
         notes: sNotes || undefined,
@@ -161,6 +179,7 @@ export default function DataSiswaPage() {
     setSName('');
     setSGrade('SD Kelas 1');
     setSParentId('');
+    setSStatus('Aktif');
     setSNotes('');
     setSAvatarUrl('');
     setNewParentName('');
@@ -180,6 +199,7 @@ export default function DataSiswaPage() {
     setEditName(std.name);
     setEditGrade(std.grade);
     setEditParentId(std.parent_id || '');
+    setEditStatus(std.status || 'Aktif');
     setEditNotes(std.notes || '');
     setEditAvatarUrl(std.avatar_url || '');
   };
@@ -192,6 +212,7 @@ export default function DataSiswaPage() {
       id: editingStudent.id,
       name: editName,
       grade: editGrade,
+      status: editStatus,
       parent_id: editParentId || undefined,
       notes: editNotes,
       avatar_url: editAvatarUrl
@@ -330,66 +351,149 @@ export default function DataSiswaPage() {
         )
       },
       {
+        accessorKey: 'status',
+        header: 'Status Siswa',
+        cell: (info) => {
+          const st = (info.getValue() as string) || 'Aktif';
+          const isDeleted = Boolean(info.row.original.is_deleted || info.row.original.deleted_at);
+
+          if (isDeleted) {
+            return (
+              <div className="space-y-1">
+                <Badge variant="rose" size="sm">
+                  Terhapus
+                </Badge>
+                {info.row.original.deleted_at && (
+                  <span className="text-[10px] text-slate-400 block font-mono">
+                    {new Date(info.row.original.deleted_at).toLocaleDateString('id-ID', {
+                      day: 'numeric',
+                      month: 'short'
+                    })}
+                  </span>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!can('update', 'siswa')) return;
+                  const nextStatus = st === 'Aktif' ? 'Nonaktif' : 'Aktif';
+                  await updateSiswaMutation.mutateAsync({
+                    id: info.row.original.id,
+                    status: nextStatus
+                  });
+                }}
+                disabled={updateSiswaMutation.isPending || !can('update', 'siswa')}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer border shadow-2xs group/btn ${st === 'Aktif'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400'
+                  : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+                  }`}
+                title={`Klik tombol ini untuk mengubah status menjadi ${st === 'Aktif' ? 'Nonaktif' : 'Aktif'}`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${st === 'Aktif' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                    }`}
+                />
+                <span>{st}</span>
+              </button>
+              {st === 'Nonaktif' && (
+                <span className="text-[10px] text-amber-700 font-medium block">
+                  ⚠️ Jadwal disembunyikan
+                </span>
+              )}
+            </div>
+          );
+        }
+      },
+      {
         id: 'actions',
         header: () => <div className="text-right">Aksi & Detail</div>,
-        cell: (info) => (
-          <div className="flex items-center justify-end gap-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setDiagnosaTargetStudent(info.row.original);
-              }}
-              className="p-1.5 text-amber-700 hover:bg-amber-50 rounded-lg cursor-pointer"
-              title="Lihat Diagnosa Awal Siswa"
-            >
-              <ClipboardList className="w-4 h-4 text-amber-600" />
-            </button>
+        cell: (info) => {
+          const isDeleted = Boolean(info.row.original.is_deleted || info.row.original.deleted_at);
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                router.push(`/data-siswa/${info.row.original.id}`);
-              }}
-              className="text-xs group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 transition cursor-pointer"
-            >
-              <Eye className="w-3.5 h-3.5 mr-1" /> Detail <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-            </Button>
+          return (
+            <div className="flex items-center justify-end gap-1">
+              {isDeleted ? (
+                can('update', 'siswa') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await restoreSiswaMutation.mutateAsync(info.row.original.id);
+                    }}
+                    disabled={restoreSiswaMutation.isPending}
+                    className="text-xs text-emerald-700 hover:bg-emerald-50 border-emerald-300 font-bold"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Pulihkan
+                  </Button>
+                )
+              ) : (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDiagnosaTargetStudent(info.row.original);
+                    }}
+                    className="p-1.5 text-amber-700 hover:bg-amber-50 rounded-lg cursor-pointer"
+                    title="Lihat Diagnosa Awal Siswa"
+                  >
+                    <ClipboardList className="w-4 h-4 text-amber-600" />
+                  </button>
 
-            {can('update', 'siswa') && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditClick(info.row.original);
-                }}
-                className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
-                title="Edit Data Siswa"
-              >
-                <Edit3 className="w-4 h-4" />
-              </button>
-            )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/data-siswa/${info.row.original.id}`);
+                    }}
+                    className="text-xs group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 transition cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5 mr-1" /> Detail <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+                  </Button>
 
-            {can('delete', 'siswa') && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDeleteTargetStudent(info.row.original);
-                }}
-                disabled={deleteSiswaMutation.isPending}
-                className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
-                title="Hapus Data Siswa"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        )
+                  {can('update', 'siswa') && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditClick(info.row.original);
+                      }}
+                      className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                      title="Edit Data Siswa"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  {can('delete', 'siswa') && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteTargetStudent(info.row.original);
+                      }}
+                      disabled={deleteSiswaMutation.isPending}
+                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                      title="Hapus / Nonaktifkan Data Siswa"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        }
       }
     );
     return cols;
   },
-    [router, deleteSiswaMutation, can, isBulkMode, selectedIds, students]
+    [router, updateSiswaMutation, deleteSiswaMutation, restoreSiswaMutation, can, isBulkMode, selectedIds, students]
   );
 
   const table = useReactTable({
@@ -476,6 +580,44 @@ export default function DataSiswaPage() {
         </div>
       </div>
 
+      {/* Status Filter Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {(['Semua', 'Aktif', 'Nonaktif', 'Terhapus'] as const).map((tab) => {
+          const isActive = statusFilter === tab;
+          const count =
+            tab === 'Semua'
+              ? allStudents.filter((s) => !s.is_deleted).length
+              : tab === 'Aktif'
+                ? allStudents.filter((s) => s.status === 'Aktif' && !s.is_deleted).length
+                : tab === 'Nonaktif'
+                  ? allStudents.filter((s) => s.status === 'Nonaktif' && !s.is_deleted).length
+                  : allStudents.filter((s) => s.is_deleted || Boolean(s.deleted_at)).length;
+
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setStatusFilter(tab)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer ${isActive
+                ? tab === 'Terhapus'
+                  ? 'bg-rose-600 text-white shadow-2xs'
+                  : 'bg-emerald-600 text-white shadow-2xs'
+                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/60'
+                }`}
+            >
+              {tab === 'Terhapus' && <Archive className="w-3.5 h-3.5" />}
+              <span>{tab === 'Terhapus' ? 'Sampah / Terhapus' : tab}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Bulk Delete Action Bar */}
       {selectedIds.length > 0 && (
         <div className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-3.5 flex items-center justify-between shadow-lg shadow-rose-100/50 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -516,18 +658,22 @@ export default function DataSiswaPage() {
         </div>
       )}
 
-      {/* 1. REUSABLE MODAL: KONFIRMASI HAPUS SISWA */}
+      {/* 1. REUSABLE MODAL: KONFIRMASI NONAKTIFKAN / HAPUS SISWA */}
       <Modal
         isOpen={!!deleteTargetStudent}
         onClose={() => setDeleteTargetStudent(null)}
-        title="Konfirmasi Hapus Siswa"
+        title="Konfirmasi Nonaktifkan / Hapus Siswa"
         icon={AlertTriangle}
         maxWidth="sm"
       >
         {deleteTargetStudent && (
           <div className="space-y-4">
             <p className="text-xs text-slate-600 leading-relaxed">
-              Apakah Anda yakin ingin menghapus data siswa <strong>{deleteTargetStudent.name}</strong> ({deleteTargetStudent.grade})?
+              Apakah Anda yakin ingin menonaktifkan data siswa <strong>{deleteTargetStudent.name}</strong> ({deleteTargetStudent.grade})?
+            </p>
+
+            <p className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 leading-relaxed">
+              💡 <strong>Soft Delete:</strong> Data historis (jadwal belajar, hasil belajar, dan absensi) siswa ini akan tetap aman tersimpan di database dan tidak akan hilang.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
@@ -535,7 +681,7 @@ export default function DataSiswaPage() {
                 Batal
               </Button>
               <Button variant="danger" size="sm" onClick={confirmDeleteStudent} className="h-9 px-4 text-xs font-bold rounded-xl shadow-md">
-                Ya, Hapus Data Siswa
+                Ya, Nonaktifkan Siswa
               </Button>
             </div>
           </div>
@@ -555,13 +701,27 @@ export default function DataSiswaPage() {
             <ImageUpload currentImageUrl={sAvatarUrl} onImageUploaded={setSAvatarUrl} onUploadingChange={setIsUploadingPhoto} />
 
             <form onSubmit={handleSiswaSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-              <div>
+              <div className="sm:col-span-2">
                 <Label required>Nama Lengkap Siswa:</Label>
                 <Input required value={sName} onChange={(e) => setSName(e.target.value)} placeholder="Ananda Bintang Pratama" disabled={isUploadingPhoto} />
               </div>
               <div>
                 <Label required>Tingkat / Jenjang Kelas:</Label>
                 <Input required value={sGrade} onChange={(e) => setSGrade(e.target.value)} placeholder="SD Kelas 3" disabled={isUploadingPhoto} />
+              </div>
+              <div>
+                <Label required>Status Siswa:</Label>
+                <Select
+                  options={[
+                    { label: 'Aktif', value: 'Aktif' },
+                    { label: 'Nonaktif', value: 'Nonaktif' }
+                  ]}
+                  value={sStatus}
+                  onChange={(val) => setSStatus(val as 'Aktif' | 'Nonaktif')}
+                  isSearchable={false}
+                  isClearable={false}
+                  disabled={isUploadingPhoto}
+                />
               </div>
 
               {/* Dual-Mode Selector for Parent */}
@@ -657,9 +817,25 @@ export default function DataSiswaPage() {
               <Label required>Nama Lengkap Siswa:</Label>
               <Input required value={editName} onChange={(e) => setEditName(e.target.value)} disabled={isUploadingPhoto} />
             </div>
-            <div>
-              <Label required>Tingkat Kelas:</Label>
-              <Input required value={editGrade} onChange={(e) => setEditGrade(e.target.value)} disabled={isUploadingPhoto} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label required>Tingkat Kelas:</Label>
+                <Input required value={editGrade} onChange={(e) => setEditGrade(e.target.value)} disabled={isUploadingPhoto} />
+              </div>
+              <div>
+                <Label required>Status Siswa:</Label>
+                <Select
+                  options={[
+                    { label: 'Aktif', value: 'Aktif' },
+                    { label: 'Nonaktif', value: 'Nonaktif' }
+                  ]}
+                  value={editStatus}
+                  onChange={(val) => setEditStatus(val as 'Aktif' | 'Nonaktif')}
+                  isSearchable={false}
+                  isClearable={false}
+                  disabled={isUploadingPhoto}
+                />
+              </div>
             </div>
             <div>
               <Label>Tautan Orang Tua / Wali:</Label>
@@ -865,7 +1041,37 @@ export default function DataSiswaPage() {
                       <Avatar name={std.name} src={std.avatar_url} size="lg" className="ring-2 ring-emerald-400/40 shrink-0" />
                       <div className="min-w-0">
                         <h3 className="font-extrabold text-slate-900 text-sm truncate" title={std.name}>{std.name}</h3>
-                        <Badge variant="amber" size="sm" className="mt-0.5">{std.grade}</Badge>
+                        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                          <Badge variant="amber" size="sm">{std.grade}</Badge>
+                          {std.is_deleted ? (
+                            <Badge variant="rose" size="sm">Terhapus</Badge>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (!can('update', 'siswa')) return;
+                                const nextStatus = std.status === 'Aktif' ? 'Nonaktif' : 'Aktif';
+                                await updateSiswaMutation.mutateAsync({
+                                  id: std.id,
+                                  status: nextStatus
+                                });
+                              }}
+                              disabled={updateSiswaMutation.isPending || !can('update', 'siswa')}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer border ${std.status === 'Aktif'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                : 'bg-slate-100 text-slate-700 border-slate-300'
+                                }`}
+                              title="Klik untuk ubah status"
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${std.status === 'Aktif' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                                  }`}
+                              />
+                              <span>{std.status || 'Aktif'}</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -919,31 +1125,50 @@ export default function DataSiswaPage() {
                     </div>
 
                     <div className="flex items-center gap-1">
-                      {can('update', 'siswa') && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditClick(std);
-                          }}
-                          className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
-                          title="Edit"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                      )}
+                      {std.is_deleted ? (
+                        can('update', 'siswa') && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await restoreSiswaMutation.mutateAsync(std.id);
+                            }}
+                            disabled={restoreSiswaMutation.isPending}
+                            className="text-xs text-emerald-700 hover:bg-emerald-50 border-emerald-300 font-bold"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Pulihkan
+                          </Button>
+                        )
+                      ) : (
+                        <>
+                          {can('update', 'siswa') && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditClick(std);
+                              }}
+                              className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                              title="Edit"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                          )}
 
-                      {can('delete', 'siswa') && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteTargetStudent(std);
-                          }}
-                          disabled={deleteSiswaMutation.isPending}
-                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
-                          title="Hapus"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                          {can('delete', 'siswa') && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTargetStudent(std);
+                              }}
+                              disabled={deleteSiswaMutation.isPending}
+                              className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -978,29 +1203,35 @@ export default function DataSiswaPage() {
       <Modal
         isOpen={isBulkDeleteModalOpen}
         onClose={() => setIsBulkDeleteModalOpen(false)}
-        title="Konfirmasi Hapus Banyak Siswa"
+        title="Konfirmasi Nonaktifkan Banyak Siswa"
         icon={AlertTriangle}
         maxWidth="md"
       >
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
-            Apakah Anda yakin ingin menghapus <strong className="text-slate-900">{selectedIds.length} data siswa</strong> terpilih?
-            Tindakan ini akan menghapus data terpilih secara permanen.
+            Apakah Anda yakin ingin menonaktifkan <strong className="text-slate-900">{selectedIds.length} data siswa</strong> terpilih?
           </p>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="ghost" onClick={() => setIsBulkDeleteModalOpen(false)}>
+
+          <p className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 leading-relaxed">
+            💡 <strong>Bukan Hapus Permanen (Soft Delete):</strong> Data siswa akan dinonaktifkan dan jadwalnya otomatis disembunyikan. Seluruh riwayat hasil belajar dan absensi terdahulu tetap aman tersimpan di database dan dapat dipulihkan kapan saja di tab <em>Sampah / Terhapus</em>.
+          </p>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <Button variant="outline" size="sm" onClick={() => setIsBulkDeleteModalOpen(false)} className="h-9 px-4 text-xs font-bold rounded-xl">
               Batal
             </Button>
             <Button
               variant="danger"
+              size="sm"
               disabled={bulkDeleteSiswaMutation.isPending}
               onClick={async () => {
                 await bulkDeleteSiswaMutation.mutateAsync(selectedIds);
                 setSelectedIds([]);
                 setIsBulkDeleteModalOpen(false);
               }}
+              className="h-9 px-4 text-xs font-bold rounded-xl shadow-md"
             >
-              {bulkDeleteSiswaMutation.isPending ? 'Menghapus...' : `Ya, Hapus ${selectedIds.length} Siswa`}
+              {bulkDeleteSiswaMutation.isPending ? 'Menonaktifkan...' : `Ya, Nonaktifkan ${selectedIds.length} Siswa`}
             </Button>
           </div>
         </div>

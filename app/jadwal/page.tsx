@@ -20,8 +20,8 @@ import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
 import { Avatar } from '@/components/atoms/Avatar';
 import { Label } from '@/components/atoms/Label';
-import { Input } from '@/components/atoms/Input';
 import { Select } from '@/components/atoms/Select';
+import { TimePicker } from '@/components/atoms/TimePicker';
 import { Modal } from '@/components/atoms/Modal';
 import { Skeleton } from '@/components/atoms/Skeleton';
 import { toast } from '@/stores/useToastStore';
@@ -66,7 +66,9 @@ export default function JadwalPage() {
   );
 
   const studentOptions = useMemo(
-    () => students.map((s) => ({ label: `${s.name} - ${s.grade}`, value: s.id })),
+    () => students
+      .filter((s) => s.status !== 'Nonaktif' && !s.is_deleted)
+      .map((s) => ({ label: `${s.name} - ${s.grade}`, value: s.id })),
     [students]
   );
 
@@ -82,12 +84,13 @@ export default function JadwalPage() {
 
   const daysList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
-  // Group Schedules by Day
+  // Group Schedules by Day (Hanya jadwal aktif)
   const scheduleByDay = useMemo(() => {
     const grouped: Record<string, ScheduleItem[]> = {
       Senin: [], Selasa: [], Rabu: [], Kamis: [], Jumat: [], Sabtu: [], Minggu: []
     };
     schedules.forEach((sch) => {
+      if (sch.status === 'Nonaktif') return;
       if (grouped[sch.day_of_week]) {
         grouped[sch.day_of_week].push(sch);
       }
@@ -268,38 +271,32 @@ export default function JadwalPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <Label required className="text-xs font-bold text-slate-700 mb-1">Pilih Hari:</Label>
-              <select
+              <Select
+                options={dayOptions}
                 value={jDay}
-                onChange={(e) => setJDay(e.target.value)}
-                className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-              >
-                {dayOptions.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setJDay(val)}
+                placeholder="Pilih Hari"
+                isSearchable={false}
+                isClearable={false}
+              />
             </div>
 
             <div>
               <Label required className="text-xs font-bold text-slate-700 mb-1">Jam Mulai Sesi:</Label>
-              <Input
-                type="time"
-                required
+              <TimePicker
                 value={jStartTime}
-                onChange={(e) => setJStartTime(e.target.value)}
-                className="h-9 text-xs font-bold"
+                onChange={(val) => setJStartTime(val)}
+                title="Jam Mulai Sesi"
               />
             </div>
 
             <div>
               <Label required className="text-xs font-bold text-slate-700 mb-1">Jam Selesai Sesi:</Label>
-              <Input
-                type="time"
-                required
+              <TimePicker
                 value={jEndTime}
-                onChange={(e) => setJEndTime(e.target.value)}
-                className="h-9 text-xs font-bold"
+                onChange={(val) => setJEndTime(val)}
+                minTime={jStartTime}
+                title="Jam Selesai Sesi"
               />
             </div>
           </div>
@@ -353,38 +350,32 @@ export default function JadwalPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <Label required className="text-xs font-bold text-slate-700 mb-1">Hari:</Label>
-              <select
+              <Select
+                options={dayOptions}
                 value={editDay}
-                onChange={(e) => setEditDay(e.target.value)}
-                className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-              >
-                {dayOptions.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setEditDay(val)}
+                placeholder="Pilih Hari"
+                isSearchable={false}
+                isClearable={false}
+              />
             </div>
 
             <div>
               <Label required className="text-xs font-bold text-slate-700 mb-1">Jam Mulai:</Label>
-              <Input
-                type="time"
-                required
+              <TimePicker
                 value={editStartTime}
-                onChange={(e) => setEditStartTime(e.target.value)}
-                className="h-9 text-xs font-bold"
+                onChange={(val) => setEditStartTime(val)}
+                title="Jam Mulai"
               />
             </div>
 
             <div>
               <Label required className="text-xs font-bold text-slate-700 mb-1">Jam Selesai:</Label>
-              <Input
-                type="time"
-                required
+              <TimePicker
                 value={editEndTime}
-                onChange={(e) => setEditEndTime(e.target.value)}
-                className="h-9 text-xs font-bold"
+                onChange={(val) => setEditEndTime(val)}
+                minTime={editStartTime}
+                title="Jam Selesai"
               />
             </div>
           </div>
