@@ -165,6 +165,9 @@ export async function GET(
         parent_name: student.parents?.name || 'Belum Dihubungkan',
         parent_phone: student.parents?.phone || '-',
         parent_email: student.parents?.email || '-',
+        status: student.status || 'Aktif',
+        is_deleted: Boolean(student.is_deleted || student.deleted_at),
+        deleted_at: student.deleted_at || null,
         notes: student.notes,
         avatar_url: student.avatar_url || student.photo_url || ''
       },

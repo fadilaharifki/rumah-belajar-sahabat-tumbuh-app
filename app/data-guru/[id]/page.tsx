@@ -28,6 +28,7 @@ import { Input } from '@/components/atoms/Input';
 import { Label } from '@/components/atoms/Label';
 import { Select } from '@/components/atoms/Select';
 import { DatePicker } from '@/components/atoms/DatePicker';
+import { TimePicker } from '@/components/atoms/TimePicker';
 import { Skeleton } from '@/components/atoms/Skeleton';
 import { formatRupiah, formatWaUrl } from '@/utils/formatters';
 import { format } from 'date-fns';
@@ -50,11 +51,13 @@ export default function DetailGuruPage() {
   const { data: allStudents = [] } = useSiswaQuery();
 
   const studentOptions = useMemo(() => {
-    return allStudents.map((st) => ({
-      value: st.id,
-      label: st.name,
-      subLabel: st.grade
-    }));
+    return allStudents
+      .filter((st) => st.status !== 'Nonaktif' && !st.is_deleted)
+      .map((st) => ({
+        value: st.id,
+        label: st.name,
+        subLabel: st.grade
+      }));
   }, [allStudents]);
 
   const daysList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
@@ -354,11 +357,11 @@ export default function DetailGuruPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label required>Jam Mulai:</Label>
-                  <Input required type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} />
+                  <TimePicker value={editStartTime} onChange={(val) => setEditStartTime(val)} title="Jam Mulai" />
                 </div>
                 <div>
                   <Label required>Jam Selesai:</Label>
-                  <Input required type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} />
+                  <TimePicker value={editEndTime} onChange={(val) => setEditEndTime(val)} minTime={editStartTime} title="Jam Selesai" />
                 </div>
               </div>
 
@@ -487,11 +490,11 @@ export default function DetailGuruPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label required>Jam Mulai:</Label>
-                    <Input required type="time" value={jStartTime} onChange={(e) => setJStartTime(e.target.value)} />
+                    <TimePicker value={jStartTime} onChange={(val) => setJStartTime(val)} title="Jam Mulai" />
                   </div>
                   <div>
                     <Label required>Jam Selesai:</Label>
-                    <Input required type="time" value={jEndTime} onChange={(e) => setJEndTime(e.target.value)} />
+                    <TimePicker value={jEndTime} onChange={(val) => setJEndTime(val)} minTime={jStartTime} title="Jam Selesai" />
                   </div>
                 </div>
 

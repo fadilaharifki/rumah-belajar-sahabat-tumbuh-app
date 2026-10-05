@@ -15,14 +15,23 @@ export async function GET() {
   try {
     const { data, error } = await supabase
       .from('schedules')
-      .select('*, teachers(id, name, photo_url, phone, users(avatar_url)), students(id, name, grade, avatar_url)')
+      .select('*, teachers(id, name, photo_url, phone, users(avatar_url)), students(id, name, grade, avatar_url, status, is_deleted, deleted_at)')
       .order('start_time', { ascending: true });
 
     if (error) {
       return NextResponse.json({ data: [], source: 'error', error: error.message }, { status: 400 });
     }
 
-    const formatted = (data || []).map((s: any) => ({
+    // Filter out schedules if student is soft-deleted or nonaktif
+    const activeSchedules = (data || []).filter((s: any) => {
+      if (s.students) {
+        if (s.students.is_deleted || s.students.deleted_at) return false;
+        if (s.students.status === 'Nonaktif') return false;
+      }
+      return true;
+    });
+
+    const formatted = activeSchedules.map((s: any) => ({
       id: s.id,
       teacher_id: s.teacher_id,
       teacher_name: s.teachers?.name || 'Guru Pengajar',

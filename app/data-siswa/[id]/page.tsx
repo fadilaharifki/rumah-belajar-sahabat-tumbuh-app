@@ -198,6 +198,15 @@ export default function DetailSiswaPage() {
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h1 className="text-sm sm:text-base font-bold text-slate-900 leading-tight truncate">{student.name}</h1>
                 <Badge variant="amber" size="sm" className="text-[9px] sm:text-[10px] py-0 px-1.5">{student.grade}</Badge>
+                {student.is_deleted ? (
+                  <Badge variant="rose" size="sm" className="text-[9px] sm:text-[10px] py-0 px-1.5">
+                    Terhapus
+                  </Badge>
+                ) : (
+                  <Badge variant={student.status === 'Aktif' ? 'emerald' : 'slate'} size="sm" className="text-[9px] sm:text-[10px] py-0 px-1.5">
+                    {student.status || 'Aktif'}
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2 text-[11px] sm:text-xs text-slate-500 font-medium truncate mt-0.5">
                 <span className="truncate">Wali: <strong className="text-slate-800">{student.parent_name}</strong></span>
@@ -244,6 +253,17 @@ export default function DetailSiswaPage() {
             )}
           </div>
         </div>
+
+        {/* STATUS INACTIVE WARNING BANNER */}
+        {(student.status === 'Nonaktif' || student.is_deleted) && (
+          <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-3 flex items-start gap-2.5 text-xs text-amber-900 shadow-2xs">
+            <span className="p-1 rounded-lg bg-amber-200/70 text-amber-800 shrink-0 font-bold">ℹ️</span>
+            <div className="leading-relaxed">
+              <strong>Siswa {student.is_deleted ? 'Telah Dihapus / Dinonaktifkan' : 'Berstatus Nonaktif'}:</strong>{' '}
+              Jadwal mengajar siswa ini otomatis disembunyikan dari kalender jadwal mingguan dan daftar pencatatan presensi operasional. Seluruh riwayat hasil belajar dan presensi di bawah tetap tersimpan aman.
+            </div>
+          </div>
+        )}
 
         {/* ROW 2: TABS (LEFT) + COMPACT DATE FILTER (RIGHT) */}
         <div className="flex items-center justify-between gap-2 pt-0.5">
@@ -781,6 +801,16 @@ export default function DetailSiswaPage() {
       {/* TAB 3: JADWAL SESI MINGGUAN SISWA */}
       {activeTab === 'jadwal' && (
         <Card className="p-0 overflow-hidden bg-white shadow-2xs border border-slate-200 rounded-2xl">
+          {(student.status === 'Nonaktif' || student.is_deleted) && (
+            <div className="p-3 bg-amber-50 border-b border-amber-200/80 text-amber-900 text-xs flex items-center gap-2">
+              <span>⚠️</span>
+              <span>
+                <strong>Perhatian:</strong> Karena status siswa ini saat ini{' '}
+                <strong>{student.is_deleted ? 'Terhapus / Nonaktif' : 'Nonaktif'}</strong>, jadwal sesi di bawah ini
+                disembunyikan dari kalender jadwal mingguan operasional lembaga.
+              </span>
+            </div>
+          )}
           <div className="p-3.5 border-b border-slate-100 bg-slate-50 font-bold text-xs text-slate-700 flex items-center justify-between">
             <span>Jadwal Sesi Belajar Rutin — {student.name}</span>
             <span className="text-emerald-700 font-mono text-[11px]">{studentSchedules.length} Sesi Rutin</span>
