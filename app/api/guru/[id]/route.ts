@@ -7,6 +7,8 @@ const isSupabaseConfigured = Boolean(
   !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
 );
 
+const GURU_ROLE_ID = '22222222-2222-2222-2222-000000000002';
+
 // PUT /api/guru/[id] - Update teacher details, photo_url, status, OR Reset Password
 export async function PUT(
   request: Request,
@@ -15,14 +17,14 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, email, phone, session_rate, photo_url, avatar_url, subjects, status, reset_password } = body;
+    const { name, email, phone, session_rate, photo_url, avatar_url, subjects, status, reset_password, supervisor_id } = body;
 
     const targetPhoto = photo_url || avatar_url;
 
     if (isSupabaseConfigured) {
       const { data: teacherData } = await supabase
         .from('teachers')
-        .select('id, user_id, email, name')
+        .select('id, user_id, email, name, phone')
         .eq('id', id)
         .maybeSingle();
 
@@ -78,17 +80,58 @@ export async function PUT(
       // 2. Sync to public.users (Data Pengguna) & Auth Users
       const userUpdatePayload: Record<string, any> = {};
       if (name) userUpdatePayload.full_name = name;
-      if (email) userUpdatePayload.email = teacherEmail;
+      if (email) userUpdatePayload.email = (teacherEmail || '').toLowerCase().trim();
+      if (phone) userUpdatePayload.phone = phone;
       if (status) userUpdatePayload.status = status;
       if (targetPhoto !== undefined && targetPhoto !== '') userUpdatePayload.avatar_url = targetPhoto;
 
+      let targetUserId = teacherData?.user_id;
+
+      // If user_id is not already linked on teacher, find the user by email (case-insensitive)
+      if (!targetUserId) {
+        const searchEmail = (teacherData?.email || teacherEmail || '').toLowerCase().trim();
+        if (searchEmail) {
+          const { data: foundUser } = await supabase
+            .from('users')
+            .select('id')
+            .ilike('email', searchEmail)
+            .maybeSingle();
+
+          if (foundUser?.id) {
+            targetUserId = foundUser.id;
+            // Link teacher to this user_id immediately to heal relationship
+            await supabase.from('teachers').update({ user_id: foundUser.id }).eq('id', id);
+          }
+        }
+      }
+
       if (Object.keys(userUpdatePayload).length > 0) {
-        if (teacherData?.user_id) {
-          await supabase.from('users').update(userUpdatePayload).eq('id', teacherData.user_id);
-        } else if (teacherData?.email) {
-          await supabase.from('users').update(userUpdatePayload).eq('email', teacherData.email);
-        } else if (teacherEmail) {
-          await supabase.from('users').update(userUpdatePayload).eq('email', teacherEmail);
+        if (targetUserId) {
+          await supabase.from('users').update(userUpdatePayload).eq('id', targetUserId);
+        } else {
+          // If user record doesn't exist yet in public.users, create it now (upsert)!
+          const cleanEmail = (teacherEmail || teacherData?.email || '').toLowerCase().trim();
+          if (cleanEmail) {
+            const { data: newUser } = await supabase
+              .from('users')
+              .upsert([
+                {
+                  email: cleanEmail,
+                  full_name: name || teacherData?.name || 'Guru',
+                  phone: phone || teacherData?.phone || '',
+                  avatar_url: targetPhoto || '',
+                  category: 'Guru',
+                  role_id: GURU_ROLE_ID,
+                  status: status || 'Aktif'
+                }
+              ], { onConflict: 'email' })
+              .select()
+              .single();
+
+            if (newUser?.id) {
+              await supabase.from('teachers').update({ user_id: newUser.id }).eq('id', id);
+            }
+          }
         }
       }
 
@@ -131,6 +174,7 @@ export async function PUT(
       if (session_rate !== undefined) updateData.session_rate = session_rate;
       if (targetPhoto !== undefined && targetPhoto !== '') updateData.photo_url = targetPhoto;
       if (subjects) updateData.subjects = subjects;
+      if (supervisor_id !== undefined) updateData.supervisor_id = supervisor_id;
       if (status) updateData.status = status;
 
       if (Object.keys(updateData).length > 0) {

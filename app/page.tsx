@@ -2,17 +2,17 @@
 
 import React, { useMemo } from 'react';
 import Link from 'next/link';
-import { 
-  Users, 
-  GraduationCap, 
-  HeartHandshake, 
-  BookOpenCheck, 
-  Calculator, 
-  ShieldCheck, 
-  Sparkles, 
-  TrendingUp, 
-  Clock, 
-  CheckCircle2, 
+import {
+  Users,
+  GraduationCap,
+  HeartHandshake,
+  BookOpenCheck,
+  Calculator,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+  Clock,
+  CheckCircle2,
   ArrowRight,
   Sprout,
   CalendarDays,
@@ -61,8 +61,8 @@ export default function DashboardPage() {
   const monthAttendance = useMemo(() => {
     return presensiList.filter((p) => {
       const isCurrentMonth = p.date?.startsWith(currentMonth);
-      const isValidSession = p.status === 'Valid' || p.status === 'ManualVerified' || Boolean(p.session_log);
-      
+      const isValidSession = p.status === 'Valid' || p.status === 'ManualVerified';
+
       if (!isCurrentMonth || !isValidSession) return false;
       if (isTeacher && teacherId) return p.teacher_id === teacherId;
       return true;
@@ -84,12 +84,17 @@ export default function DashboardPage() {
         (p) =>
           p.teacher_id === teacher.id &&
           p.date?.startsWith(currentMonth) &&
-          (p.status === 'Valid' || p.status === 'ManualVerified' || Boolean(p.session_log))
+          (p.status === 'Valid' || p.status === 'ManualVerified')
       );
       const rate = teacher.session_rate || 85000;
       return acc + (validSessions.length * rate);
     }, 0);
   }, [teachers, presensiList, currentMonth, isTeacher, loggedInTeacher, totalSessionsMonth]);
+
+  // Count pending evaluation approvals for Supervisor / Pemilik
+  const pendingApprovalCount = useMemo(() => {
+    return presensiList.filter((p) => p.status === 'PendingApproval').length;
+  }, [presensiList]);
 
   // Clean, permission-filtered mobile quick links
   const mobileQuickLinks = [
@@ -103,7 +108,7 @@ export default function DashboardPage() {
     { name: 'Akun', href: '/pengaturan', icon: Settings, color: 'bg-slate-100 text-slate-900 border-slate-200', isVisible: true },
   ].filter((item) => item.isVisible);
 
-  const displayRoleName = currentRole?.name || (activeRole === 'admin' ? 'Pemilik / Admin Utama' : activeRole === 'teacher' ? 'Pengajar / Guru' : 'Wali Siswa');
+  const displayRoleName = user?.role_name
 
   return (
     <div className="space-y-3.5">
@@ -138,6 +143,32 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* PENDING APPROVAL NOTIFICATION BANNER (For Supervisor / Pemilik) */}
+      {can('approve', 'presensi') && pendingApprovalCount > 0 && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 sm:p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500 text-white shrink-0 shadow-xs">
+              <Clock className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm">
+                Terdapat {pendingApprovalCount} Laporan Evaluasi Menunggu Persetujuan
+              </h3>
+              <p className="text-xs text-slate-600 font-medium">
+                Guru telah mengunggah catatan hasil belajar siswa. Mohon periksa dan verifikasi agar sesi tercatat sah.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/presensi?tab=pending"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition shadow-xs shrink-0 cursor-pointer"
+          >
+            <span>Review & Approval</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      )}
 
       {/* MOBILE QUICK LAUNCHER GRID - FILTERED BY PERMISSION */}
       {mobileQuickLinks.length > 0 && (

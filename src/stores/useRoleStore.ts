@@ -21,8 +21,9 @@ export const ALL_CRUD_PERMISSIONS: PermissionItem[] = [
 
   // Presensi & Check-In
   { key: 'presensi:read', label: 'Read (Melihat Lembar Presensi)', group: 'Presensi & Check-In' },
-  { key: 'presensi:create', label: 'Create (Check-In Presensi)', group: 'Presensi & Check-In' },
+  { key: 'presensi:create', label: 'Create (Check-In Presensi & Isi Evaluasi)', group: 'Presensi & Check-In' },
   { key: 'presensi:update', label: 'Update (Mengedit Status Presensi)', group: 'Presensi & Check-In' },
+  { key: 'presensi:approve', label: 'Approve (Menyetujui & Memvalidasi Laporan Evaluasi)', group: 'Presensi & Check-In' },
   { key: 'presensi:delete', label: 'Delete (Menghapus Data Presensi)', group: 'Presensi & Check-In' },
 
   // Jadwal Ngajar
@@ -67,6 +68,7 @@ export interface RoleStoreState {
   roles: RoleItem[];
   addRole: (role: Omit<RoleItem, 'id'>) => void;
   deleteRole: (roleId: string) => void;
+  updateRole: (roleId: string, data: { name?: string; description?: string; permissions?: string[] }) => void;
   updateRolePermissions: (roleId: string, permissions: string[]) => void;
   togglePermission: (roleId: string, permissionKey: string) => void;
 }
@@ -84,6 +86,12 @@ export const useRoleStore = create<RoleStoreState>((set) => ({
       name: 'Pengajar / Guru Pendamping',
       description: 'Bisa melihat dashboard, presensi, jadwal, data guru & siswa, serta menginput jurnal catatan sesi',
       permissions: ['dashboard:read', 'presensi:read', 'presensi:create', 'jadwal:read', 'jadwal:create', 'guru:read', 'siswa:read', 'siswa:create', 'siswa:update', 'wali:read']
+    },
+    {
+      id: '55555555-5555-5555-5555-000000000005',
+      name: 'Guru Senior / Koordinator',
+      description: 'Pengajar senior yang bertugas mengajar sekaligus memverifikasi & approval laporan evaluasi guru junior',
+      permissions: ['dashboard:read', 'presensi:read', 'presensi:create', 'presensi:approve', 'jadwal:read', 'jadwal:create', 'guru:read', 'siswa:read', 'siswa:create', 'siswa:update', 'wali:read']
     },
     {
       id: '33333333-3333-3333-3333-000000000003',
@@ -109,6 +117,21 @@ export const useRoleStore = create<RoleStoreState>((set) => ({
   deleteRole: (roleId) => {
     set((state) => ({
       roles: state.roles.filter((r) => r.id !== roleId)
+    }));
+  },
+
+  updateRole: (roleId, data) => {
+    set((state) => ({
+      roles: state.roles.map((r) =>
+        r.id === roleId
+          ? {
+              ...r,
+              name: data.name ?? r.name,
+              description: data.description ?? r.description,
+              permissions: data.permissions ?? r.permissions
+            }
+          : r
+      )
     }));
   },
 

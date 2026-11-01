@@ -21,6 +21,12 @@ const MOCK_ROLES = [
     permissions: ['guru:read', 'siswa:read', 'siswa:create', 'siswa:update', 'wali:read']
   },
   {
+    id: '55555555-5555-5555-5555-000000000005',
+    name: 'Guru Senior / Koordinator',
+    description: 'Pengajar senior yang bertugas mengajar sekaligus memverifikasi & approval laporan evaluasi guru junior',
+    permissions: ['dashboard:read', 'presensi:read', 'presensi:create', 'presensi:approve', 'jadwal:read', 'jadwal:create', 'guru:read', 'siswa:read', 'siswa:create', 'siswa:update', 'wali:read']
+  },
+  {
     id: '33333333-3333-3333-3333-000000000003',
     name: 'Wali Siswa / Orang Tua',
     description: 'Akses terbatas untuk melihat catatan hasil belajar & progress anak',
@@ -41,9 +47,30 @@ export async function GET() {
   }
 
   try {
-    const { data: rolesData, error: rolesErr } = await supabase.from('roles').select('*').order('created_at');
+    let { data: rolesData, error: rolesErr } = await supabase.from('roles').select('*').order('created_at');
     if (rolesErr || !rolesData || rolesData.length === 0) {
       return NextResponse.json({ data: MOCK_ROLES, source: 'mock' });
+    }
+
+    // Auto-seed Guru Senior role if missing in public.roles
+    const hasSenior = rolesData.some((r: any) => r.id === '55555555-5555-5555-5555-000000000005');
+    if (!hasSenior) {
+      const seniorRole = {
+        id: '55555555-5555-5555-5555-000000000005',
+        name: 'Guru Senior / Koordinator',
+        description: 'Pengajar senior yang bertugas mengajar sekaligus memverifikasi & approval laporan evaluasi guru junior'
+      };
+      await supabase.from('roles').insert([seniorRole]);
+      const seniorPerms = [
+        'dashboard:read', 'presensi:read', 'presensi:create', 'presensi:approve',
+        'jadwal:read', 'jadwal:create', 'guru:read', 'siswa:read', 'siswa:create',
+        'siswa:update', 'wali:read'
+      ].map((k) => ({ role_id: seniorRole.id, permission_key: k }));
+      await supabase.from('role_permissions').insert(seniorPerms);
+
+      // Re-fetch rolesData to include newly inserted role
+      const refreshed = await supabase.from('roles').select('*').order('created_at');
+      if (refreshed.data) rolesData = refreshed.data;
     }
 
     const { data: permsData } = await supabase.from('role_permissions').select('*');

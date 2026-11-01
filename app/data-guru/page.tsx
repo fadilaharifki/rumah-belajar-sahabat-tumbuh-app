@@ -21,6 +21,7 @@ import {
   useBulkDeleteGuruMutation,
   TeacherItem
 } from '@/hooks/queries/useGuruQueries';
+import { useUsersQuery } from '@/hooks/queries/useUsersQueries';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useAbility } from '@/hooks/useAbility';
 import { Card } from '@/components/atoms/Card';
@@ -53,10 +54,15 @@ export default function DataGuruPage() {
 
   // TanStack Query Hooks for Guru with BE sorting
   const { data: teachers = [], isLoading } = useGuruQuery(activeSortBy, activeSortOrder);
+  const { data: userAccounts = [] } = useUsersQuery();
   const createGuruMutation = useCreateGuruMutation();
   const updateGuruMutation = useUpdateGuruMutation();
   const deleteGuruMutation = useDeleteGuruMutation();
   const bulkDeleteGuruMutation = useBulkDeleteGuruMutation();
+
+  const supervisorList = useMemo(() => {
+    return userAccounts.filter((u) => u.category === 'Pemilik' || u.category === 'Staff' || u.category === 'Guru');
+  }, [userAccounts]);
 
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -96,6 +102,7 @@ export default function DataGuruPage() {
   const [tRate, setTRate] = useState(85000);
   const [tPhoto, setTPhoto] = useState('');
   const [tSubjects, setTSubjects] = useState('Matematika, IPA');
+  const [tSupervisorId, setTSupervisorId] = useState('');
 
   // Form State for Editing Teacher
   const [editName, setEditName] = useState('');
@@ -104,6 +111,7 @@ export default function DataGuruPage() {
   const [editRate, setEditRate] = useState(85000);
   const [editPhoto, setEditPhoto] = useState('');
   const [editSubjects, setEditSubjects] = useState('');
+  const [editSupervisorId, setEditSupervisorId] = useState('');
 
   const generateSlugEmail = (nameStr: string) => {
     const clean = nameStr
@@ -138,7 +146,8 @@ export default function DataGuruPage() {
       phone: tPhone,
       session_rate: Number(tRate),
       photo_url: tPhoto,
-      subjects: subjectList
+      subjects: subjectList,
+      supervisor_id: tSupervisorId || null
     });
 
     const generatedPassword = res?.data?.generated_password || res?.generated_password || 'Gru' + Math.random().toString(36).slice(-6) + '!';
@@ -156,6 +165,7 @@ export default function DataGuruPage() {
     setTRate(85000);
     setTPhoto('');
     setTSubjects('Matematika, IPA');
+    setTSupervisorId('');
     setIsFormOpen(false);
   };
 
@@ -200,6 +210,7 @@ export default function DataGuruPage() {
     setEditRate(guru.session_rate || 85000);
     setEditPhoto(guru.photo_url || guru.avatar_url || '');
     setEditSubjects(Array.isArray(guru.subjects) ? guru.subjects.join(', ') : 'Umum, Pendampingan');
+    setEditSupervisorId(guru.supervisor_id || '');
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -217,7 +228,8 @@ export default function DataGuruPage() {
       phone: editPhone,
       session_rate: Number(editRate),
       photo_url: editPhoto,
-      subjects: subjectList
+      subjects: subjectList,
+      supervisor_id: editSupervisorId || null
     });
 
     setEditingGuru(null);
@@ -358,6 +370,21 @@ export default function DataGuruPage() {
                   {sub}
                 </Badge>
               ))}
+            </div>
+          );
+        }
+      },
+      {
+        id: 'supervisor',
+        header: 'Supervisor Pembimbing',
+        cell: ({ row }) => {
+          const supId = row.original.supervisor_id;
+          const sup = userAccounts.find((u) => u.id === supId);
+          return (
+            <div className="flex items-center gap-1.5">
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${sup ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600'}`}>
+                {sup ? sup.full_name : 'Pemilik Langsung'}
+              </span>
             </div>
           );
         }
@@ -687,6 +714,24 @@ export default function DataGuruPage() {
               <Input value={tSubjects} onChange={(e) => setTSubjects(e.target.value)} placeholder="Matematika, IPA, Bahasa Indonesia" disabled={isUploadingPhoto} />
             </div>
 
+            <div>
+              <Label>Supervisor / Atasan Pembimbing (Approval Evaluasi)</Label>
+              <select
+                value={tSupervisorId}
+                onChange={(e) => setTSupervisorId(e.target.value)}
+                disabled={isUploadingPhoto}
+                className="w-full h-10 px-3 text-xs font-semibold bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">-- Langsung Pemilik Utama (Default) --</option>
+                {supervisorList.map((sup) => (
+                  <option key={sup.id} value={sup.id}>
+                    {sup.full_name} ({sup.category})
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-500 mt-1">Laporan evaluasi guru ini akan diteruskan ke atasan ini untuk diverifikasi.</p>
+            </div>
+
             <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
               <Button variant="outline" size="sm" type="button" onClick={() => setIsFormOpen(false)} disabled={isUploadingPhoto} className="h-9 px-4 text-xs font-bold rounded-xl">
                 Batal
@@ -738,6 +783,24 @@ export default function DataGuruPage() {
             <div>
               <Label>Bidang Mengajar (Pisahkan Komma)</Label>
               <Input value={editSubjects} onChange={(e) => setEditSubjects(e.target.value)} disabled={isUploadingPhoto} />
+            </div>
+
+            <div>
+              <Label>Supervisor / Atasan Pembimbing (Approval Evaluasi)</Label>
+              <select
+                value={editSupervisorId}
+                onChange={(e) => setEditSupervisorId(e.target.value)}
+                disabled={isUploadingPhoto}
+                className="w-full h-10 px-3 text-xs font-semibold bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">-- Langsung Pemilik Utama (Default) --</option>
+                {supervisorList.map((sup) => (
+                  <option key={sup.id} value={sup.id}>
+                    {sup.full_name} ({sup.category})
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-500 mt-1">Laporan evaluasi guru ini akan diteruskan ke atasan ini untuk diverifikasi.</p>
             </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">

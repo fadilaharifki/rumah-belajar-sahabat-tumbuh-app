@@ -97,8 +97,6 @@ export async function GET(request: Request) {
       const teacherStudentDateKey = `${att.teacher_id}_${att.student_id}_${att.date}`;
       const logs = sessionLogsMapByAtt[att.id] || sessionLogsMapByTeacherStudentDate[teacherStudentDateKey] || null;
 
-      const isValid = att.status === 'Valid' || att.status === 'ManualVerified' || Boolean(logs);
-
       return {
         id: att.id,
         schedule_id: att.schedule_id,
@@ -113,13 +111,23 @@ export async function GET(request: Request) {
         check_in: att.check_in ? att.check_in.substring(0, 5) : '14:00',
         check_out: att.check_out ? att.check_out.substring(0, 5) : '-',
         duration_minutes: att.duration_minutes || 90,
-        status: isValid ? (att.status === 'ManualVerified' ? 'ManualVerified' : 'Valid') : 'CheckIn',
+        status: att.status || (logs ? (logs.approval_status || 'PendingApproval') : 'CheckIn'),
+        approved_by: att.approved_by || null,
+        approval_notes: att.approval_notes || (logs ? logs.rejection_reason : null),
+        approved_at: att.approved_at || (logs ? logs.approved_at : null),
+        created_at: att.created_at,
+        updated_at: att.updated_at,
         session_log: logs
           ? {
               id: logs.id,
               session_number: logs.session_number || 1,
               activities: logs.activities,
-              results_recommendations: logs.results_recommendations
+              results_recommendations: logs.results_recommendations,
+              approval_status: logs.approval_status || 'PendingApproval',
+              approver_id: logs.approver_id,
+              rejection_reason: logs.rejection_reason,
+              created_at: logs.created_at,
+              updated_at: logs.updated_at
             }
           : null
       };
@@ -150,10 +158,68 @@ export async function POST(request: Request) {
       );
     }
 
-    const todayDate = date || new Date().toISOString().slice(0, 10);
-    const nowTime = check_in || new Date().toTimeString().slice(0, 5);
+    // Deterministic Western Indonesia Time (WIB = UTC+7)
+    const todayDate = date || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+    const nowTime = check_in || new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' });
+
+    // Indonesian Day of Week based on WIB date
+    const DAYS_OF_WEEK_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
+    const [y, m, d] = todayDate.split('-').map(Number);
+    const dateUtcNoon = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    const dayOfWeek = DAYS_OF_WEEK_ID[dateUtcNoon.getUTCDay()];
 
     if (isSupabaseConfigured) {
+      // 1. Validasi Jadwal Siswa (Harus memiliki jadwal aktif di hari ini dan bersama guru ini)
+      const { data: studentSchedules, error: schError } = await supabase
+        .from('schedules')
+        .select('id, teacher_id, student_id, day_of_week, start_time, end_time, room, status, teachers(name), students(name)')
+        .eq('student_id', student_id);
+
+      const activeSchedules = (studentSchedules || []).filter((s: any) => s.status !== 'Nonaktif');
+
+      // Cek apakah siswa memiliki jadwal bimbingan di sistem
+      if (activeSchedules.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Tidak dapat Check-In! Siswa belum memiliki jadwal bimbingan aktif di sistem. Silakan atur jadwal di menu Jadwal Ngajar terlebih dahulu.'
+          },
+          { status: 400 }
+        );
+      }
+
+      // Cek apakah siswa memiliki jadwal pada hari ini (dayOfWeek)
+      const todaySchedules = activeSchedules.filter((s: any) => s.day_of_week === dayOfWeek);
+      if (todaySchedules.length === 0) {
+        const availableDays = Array.from(
+          new Set(activeSchedules.map((s: any) => `${s.day_of_week} (${(s.start_time || '').slice(0, 5)} - ${(s.end_time || '').slice(0, 5)})`))
+        ).join(', ');
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Tidak dapat Check-In! Siswa tidak memiliki jadwal bimbingan pada hari ${dayOfWeek}. Jadwal belajar siswa: ${availableDays}.`
+          },
+          { status: 400 }
+        );
+      }
+
+      // Cek apakah guru yang check-in sesuai dengan guru yang terdaftar di jadwal siswa hari ini
+      const matchingSchedule = todaySchedules.find((s: any) => s.teacher_id === teacher_id);
+      if (!matchingSchedule) {
+        const scheduledInfo = todaySchedules
+          .map((s: any) => `${s.teachers?.name || 'Guru lain'} (${(s.start_time || '').slice(0, 5)} - ${(s.end_time || '').slice(0, 5)})`)
+          .join(', ');
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Tidak dapat Check-In! Pada hari ${dayOfWeek}, siswa dijadwalkan belajar bersama ${scheduledInfo}, bukan guru yang dipilih.`
+          },
+          { status: 400 }
+        );
+      }
+
+      const resolvedScheduleId = schedule_id || matchingSchedule.id;
+
       // Check if attendance record already exists for this teacher, student, schedule & date
       let existingQuery = supabase
         .from('attendance_records')
@@ -162,8 +228,8 @@ export async function POST(request: Request) {
         .eq('student_id', student_id)
         .eq('date', todayDate);
 
-      if (schedule_id) {
-        existingQuery = existingQuery.eq('schedule_id', schedule_id);
+      if (resolvedScheduleId) {
+        existingQuery = existingQuery.eq('schedule_id', resolvedScheduleId);
       }
 
       const { data: existing } = await existingQuery.maybeSingle();
@@ -183,7 +249,7 @@ export async function POST(request: Request) {
           {
             teacher_id,
             student_id,
-            schedule_id: schedule_id || null,
+            schedule_id: resolvedScheduleId,
             date: todayDate,
             check_in: nowTime,
             status: 'CheckIn'
@@ -199,7 +265,7 @@ export async function POST(request: Request) {
             {
               teacher_id,
               student_id,
-              schedule_id: schedule_id || null,
+              schedule_id: resolvedScheduleId,
               date: todayDate,
               check_in: nowTime,
               status: 'CheckIn'

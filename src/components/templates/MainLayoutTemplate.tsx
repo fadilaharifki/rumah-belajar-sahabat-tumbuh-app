@@ -15,7 +15,7 @@ export interface MainLayoutTemplateProps {
 
 export const MainLayoutTemplate: React.FC<MainLayoutTemplateProps> = ({ children }) => {
   const pathname = usePathname();
-  const { isSidebarOpen, isSidebarCollapsed } = useUIStore();
+  const { isSidebarCollapsed } = useUIStore();
 
   if (pathname === '/login') {
     return (
@@ -38,12 +38,8 @@ export const MainLayoutTemplate: React.FC<MainLayoutTemplateProps> = ({ children
 
         <div
           className={`flex-1 flex flex-col transition-all duration-300 ${
-            isSidebarOpen
-              ? isSidebarCollapsed
-                ? 'lg:pl-20'
-                : 'lg:pl-64'
-              : 'pl-0'
-          } print:pl-0`}
+            isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
+          } pl-0 print:pl-0`}
         >
           <div className="print:hidden">
             <Navbar />

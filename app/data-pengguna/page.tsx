@@ -14,6 +14,7 @@ import {
 } from '@tanstack/react-table';
 import { UserCheck, Search, Mail, ArrowUpDown, ArrowUp, ArrowDown, Check, Power, ShieldAlert, Filter } from 'lucide-react';
 import { useRoleStore } from '@/stores/useRoleStore';
+import { useRolesQuery } from '@/hooks/queries/useRolesQueries';
 import {
   useUsersQuery,
   useUpdateUserMutation,
@@ -30,7 +31,12 @@ import { TablePagination } from '@/components/molecules/TablePagination';
 import { SkeletonTable } from '@/components/atoms/Skeleton';
 
 export default function DataPenggunaPage() {
-  const { roles } = useRoleStore();
+  const { data: dbRoles = [] } = useRolesQuery();
+  const { roles: storeRoles } = useRoleStore();
+
+  const availableRoles = useMemo(() => {
+    return dbRoles.length > 0 ? dbRoles : storeRoles;
+  }, [dbRoles, storeRoles]);
 
   // Backend Filter State (hits BE API /api/users?category=...)
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -46,7 +52,13 @@ export default function DataPenggunaPage() {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   // Bulk Assign Target Role State
-  const [bulkTargetRoleId, setBulkTargetRoleId] = useState(roles[0]?.id || '22222222-2222-2222-2222-000000000002');
+  const [bulkTargetRoleId, setBulkTargetRoleId] = useState('');
+
+  React.useEffect(() => {
+    if (availableRoles.length > 0 && !bulkTargetRoleId) {
+      setBulkTargetRoleId(availableRoles[0]?.id || '22222222-2222-2222-2222-000000000002');
+    }
+  }, [availableRoles, bulkTargetRoleId]);
 
   // Single Role Change Handler
   const handleSingleRoleChange = (userId: string, targetRoleId: string) => {
@@ -65,7 +77,7 @@ export default function DataPenggunaPage() {
     if (selectedIndices.length === 0) return;
 
     const selectedUsers = selectedIndices.map((idx) => usersList[idx]).filter(Boolean);
-    const targetRole = roles.find((r) => r.id === bulkTargetRoleId);
+    const targetRole = availableRoles.find((r) => r.id === bulkTargetRoleId);
     if (!targetRole) return;
 
     selectedUsers.forEach((u) => {
@@ -160,7 +172,7 @@ export default function DataPenggunaPage() {
         cell: (info) => (
           <div className="w-56">
             <Select
-              options={roles.map((r) => ({ value: r.id, label: r.name }))}
+              options={availableRoles.map((r) => ({ value: r.id, label: r.name }))}
               value={info.getValue() as string}
               onChange={(val) => handleSingleRoleChange(info.row.original.id, val)}
               isSearchable
@@ -208,7 +220,7 @@ export default function DataPenggunaPage() {
         }
       }
     ],
-    [roles, updateUserMutation]
+    [availableRoles, updateUserMutation]
   );
 
   const table = useReactTable({
@@ -298,7 +310,7 @@ export default function DataPenggunaPage() {
 
             <div className="w-48 sm:w-56">
               <Select
-                options={roles.map((r) => ({ value: r.id, label: `Assign: ${r.name}` }))}
+                options={availableRoles.map((r) => ({ value: r.id, label: `Assign: ${r.name}` }))}
                 value={bulkTargetRoleId}
                 onChange={(val) => setBulkTargetRoleId(val)}
                 isSearchable

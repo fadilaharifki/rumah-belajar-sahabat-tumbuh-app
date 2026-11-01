@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, UserCheck, Calendar, FileText, Sparkles, Plus,
   ClipboardList, Hash, Clock, MessageCircle, Filter, RotateCcw,
-  BookOpen, Award, CheckCircle2, ChevronDown, X, CalendarDays, Eye
+  BookOpen, Award, CheckCircle2, ChevronDown, X, CalendarDays, Eye, AlertTriangle
 } from 'lucide-react';
 import { useSiswaDetailQuery } from '@/hooks/queries/useSiswaQueries';
 import { useSubmitSessionLogMutation } from '@/hooks/queries/usePresensiQueries';
@@ -446,6 +446,32 @@ export default function DetailSiswaPage() {
         maxWidth="xl"
       >
         <form onSubmit={handleFormSubmit} className="space-y-3.5">
+          {(() => {
+            const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+            const isPastCutoff = date < todayStr;
+            const isLocked = isPastCutoff && user?.role === 'teacher';
+
+            return (
+              <>
+                {isPastCutoff && (
+                  <div className="bg-rose-50 border border-rose-300 p-3 rounded-xl text-xs text-rose-900 space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>Batas Waktu Pengisian Laporan Telah Berakhir</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-rose-800">
+                      Laporan evaluasi wajib disubmit maksimal pukul 23:59 WIB pada hari jadwal belajar ({date}). {isLocked ? 'Form saat ini terkunci untuk pengajar.' : 'Sebagai Pemilik/Admin, Anda dapat mengisi atau memperbarui laporan ini.'}
+                    </p>
+                  </div>
+                )}
+                <div className="bg-amber-50/80 border border-amber-200/90 p-2.5 rounded-xl text-[11px] text-amber-900 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-700 shrink-0" />
+                  <span>Status setelah disimpan: <strong>Menunggu Approval Atasan</strong>.</span>
+                </div>
+              </>
+            );
+          })()}
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <Label required className="text-xs font-bold text-slate-700 mb-1">Pertemuan Ke-:</Label>
@@ -515,7 +541,13 @@ export default function DetailSiswaPage() {
             <Button variant="outline" size="sm" type="button" onClick={() => setIsFormOpen(false)} className="h-9 px-4 text-xs font-bold rounded-xl">
               Batal
             </Button>
-            <Button variant="primary" size="sm" type="submit" disabled={submitSessionLogMutation.isPending} className="h-9 px-5 text-xs font-bold rounded-xl shadow-md">
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              disabled={Boolean(date < new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }) && user?.role === 'teacher') || submitSessionLogMutation.isPending}
+              className="h-9 px-5 text-xs font-bold rounded-xl shadow-md"
+            >
               {submitSessionLogMutation.isPending ? 'Menyimpan...' : 'Simpan Catatan'}
             </Button>
           </div>
@@ -544,6 +576,9 @@ export default function DetailSiswaPage() {
                     <Badge variant="emerald" size="sm" className="font-extrabold text-[10px]">
                       <Hash className="w-3 h-3 mr-0.5" />
                       <span>Ke-{log.session_number || 1}</span>
+                    </Badge>
+                    <Badge variant={log.approval_status === 'Valid' ? 'emerald' : log.approval_status === 'Invalid' ? 'rose' : 'amber'} size="sm" className="text-[10px] font-bold">
+                      {log.approval_status === 'Valid' ? 'Valid' : log.approval_status === 'Invalid' ? 'Tidak Valid' : 'Menunggu Approval'}
                     </Badge>
                     <Badge variant="slate" size="sm" className="text-[10px] font-bold">
                       <Calendar className="w-3 h-3 mr-1 text-emerald-600" />
@@ -644,6 +679,22 @@ export default function DetailSiswaPage() {
                 </span>
                 <span>Tanggal: {selectedDetailLog.session_date}</span>
                 <span>Jam: {selectedDetailLog.start_time} - {selectedDetailLog.end_time} WIB</span>
+              </div>
+
+              {/* Status & Audit Timestamps */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-emerald-200/80 font-mono text-[10px] text-slate-600">
+                <div>
+                  <span className="font-bold text-slate-700 mr-1.5">Status:</span>
+                  <span className={`px-2 py-0.5 rounded-full font-bold ${selectedDetailLog.approval_status === 'Valid' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : selectedDetailLog.approval_status === 'Invalid' ? 'bg-rose-100 text-rose-900 border border-rose-300' : 'bg-amber-100 text-amber-900 border border-amber-300'}`}>
+                    {selectedDetailLog.approval_status === 'Valid' ? 'Valid (Disetujui)' : selectedDetailLog.approval_status === 'Invalid' ? 'Tidak Valid' : 'Menunggu Approval'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span>Disubmit: <strong className="text-slate-800">{selectedDetailLog.created_at ? new Date(selectedDetailLog.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) + ' WIB' : selectedDetailLog.session_date}</strong></span>
+                  {selectedDetailLog.updated_at && (
+                    <span>Diperbarui: <strong className="text-slate-800">{new Date(selectedDetailLog.updated_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) + ' WIB'}</strong></span>
+                  )}
+                </div>
               </div>
             </div>
 

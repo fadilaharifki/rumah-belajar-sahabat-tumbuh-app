@@ -13,13 +13,27 @@ export async function GET() {
   }
 
   try {
-    const { data, error } = await supabase
+    let data: any = null;
+    let queryErr: any = null;
+
+    const jRes1 = await supabase
       .from('schedules')
-      .select('*, teachers(id, name, photo_url, phone, users(avatar_url)), students(id, name, grade, avatar_url, status, is_deleted, deleted_at)')
+      .select('*, teachers(id, name, photo_url, phone, users!user_id(avatar_url)), students(id, name, grade, avatar_url, status, is_deleted, deleted_at)')
       .order('start_time', { ascending: true });
 
-    if (error) {
-      return NextResponse.json({ data: [], source: 'error', error: error.message }, { status: 400 });
+    if (!jRes1.error && jRes1.data) {
+      data = jRes1.data;
+    } else {
+      const jRes2 = await supabase
+        .from('schedules')
+        .select('*, teachers(id, name, photo_url, phone), students(id, name, grade, avatar_url, status, is_deleted, deleted_at)')
+        .order('start_time', { ascending: true });
+      data = jRes2.data;
+      queryErr = jRes2.error;
+    }
+
+    if (queryErr) {
+      return NextResponse.json({ data: [], source: 'error', error: queryErr.message }, { status: 400 });
     }
 
     // Filter out schedules if student is soft-deleted or nonaktif
@@ -78,13 +92,24 @@ export async function POST(request: Request) {
     };
 
     if (isSupabaseConfigured) {
-      const { data, error } = await supabase
+      let data: any = null;
+      const insRes1 = await supabase
         .from('schedules')
         .insert([newSchedule])
-        .select('*, teachers(id, name, photo_url, phone, users(avatar_url)), students(id, name, grade, avatar_url)')
-        .single();
+        .select('*, teachers(id, name, photo_url, phone, users!user_id(avatar_url)), students(id, name, grade, avatar_url)')
+        .maybeSingle();
 
-      if (error) throw error;
+      if (!insRes1.error && insRes1.data) {
+        data = insRes1.data;
+      } else {
+        const insRes2 = await supabase
+          .from('schedules')
+          .insert([newSchedule])
+          .select('*, teachers(id, name, photo_url, phone), students(id, name, grade, avatar_url)')
+          .single();
+        if (insRes2.error) throw insRes2.error;
+        data = insRes2.data;
+      }
 
       return NextResponse.json({
         success: true,

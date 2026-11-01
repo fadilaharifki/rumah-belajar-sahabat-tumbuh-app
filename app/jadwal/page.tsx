@@ -39,6 +39,31 @@ export default function JadwalPage() {
   const updateJadwalMutation = useUpdateJadwalMutation();
   const deleteJadwalMutation = useDeleteJadwalMutation();
 
+  // Resolve current logged-in teacher by teacher_id, email, user_id, or name
+  const currentTeacher = useMemo(() => {
+    if (!user) return null;
+    return teachers.find(
+      (t) =>
+        (user.teacher_id && t.id === user.teacher_id) ||
+        (user.email && t.email?.toLowerCase().trim() === user.email.toLowerCase().trim()) ||
+        (user.id && t.user_id === user.id) ||
+        (user.full_name && t.name?.toLowerCase().trim() === user.full_name.toLowerCase().trim())
+    );
+  }, [teachers, user]);
+
+  const currentTeacherId = user?.teacher_id || currentTeacher?.id;
+
+  // Resolve parent's student IDs if logged in as parent
+  const myStudentIds = useMemo(() => {
+    if (user?.role !== 'parent') return null;
+    return new Set(
+      students.filter((st: any) => st.parent_id === user?.parent_id).map((st) => st.id)
+    );
+  }, [students, user]);
+
+  // Optional teacher filter for Admin / Staff
+  const [adminTeacherFilter, setAdminTeacherFilter] = useState<string>('all');
+
   const [activeDayFilter, setActiveDayFilter] = useState<string>('Semua');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingJadwal, setEditingJadwal] = useState<ScheduleItem | null>(null);
@@ -84,13 +109,37 @@ export default function JadwalPage() {
 
   const daysList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
-  // Group Schedules by Day (Hanya jadwal aktif)
+  // Scoped Schedules based on user role (Guru -> miliknya sendiri, Wali -> anaknya, Admin -> semua)
+  const roleFilteredSchedules = useMemo(() => {
+    return schedules.filter((sch) => {
+      if (sch.status === 'Nonaktif') return false;
+
+      // Role Guru / Pengajar: HANYA tampilkan jadwal milik guru yang sedang login
+      if (user?.role === 'teacher') {
+        if (!currentTeacherId) return false;
+        return sch.teacher_id === currentTeacherId;
+      }
+
+      // Role Wali Siswa: hanya tampilkan jadwal siswa bimbingannya
+      if (user?.role === 'parent' && myStudentIds) {
+        return myStudentIds.has(sch.student_id);
+      }
+
+      // Role Admin / Staff: dukung filter per guru jika dipilih
+      if (adminTeacherFilter !== 'all') {
+        return sch.teacher_id === adminTeacherFilter;
+      }
+
+      return true;
+    });
+  }, [schedules, user, currentTeacherId, myStudentIds, adminTeacherFilter]);
+
+  // Group Schedules by Day (Hanya jadwal aktif sesuai hak akses peran)
   const scheduleByDay = useMemo(() => {
     const grouped: Record<string, ScheduleItem[]> = {
       Senin: [], Selasa: [], Rabu: [], Kamis: [], Jumat: [], Sabtu: [], Minggu: []
     };
-    schedules.forEach((sch) => {
-      if (sch.status === 'Nonaktif') return;
+    roleFilteredSchedules.forEach((sch) => {
       if (grouped[sch.day_of_week]) {
         grouped[sch.day_of_week].push(sch);
       }
@@ -102,7 +151,7 @@ export default function JadwalPage() {
     });
 
     return grouped;
-  }, [schedules]);
+  }, [roleFilteredSchedules]);
 
   const handleJadwalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,19 +235,58 @@ export default function JadwalPage() {
             </div>
             <div>
               <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-                Jadwal Belajar Siswa & Guru
+                {user?.role === 'teacher' ? `Jadwal Mengajar — ${currentTeacher?.name || user?.full_name}` : 'Jadwal Belajar Siswa & Guru'}
               </h1>
               <p className="text-xs text-slate-500 font-medium hidden sm:block">
-                Atur alokasi waktu bimbingan per hari, guru pendamping, dan ruangan kelas.
+                {user?.role === 'teacher'
+                  ? 'Alokasi waktu bimbingan belajar Anda per hari, siswa bimbingan, dan ruangan kelas.'
+                  : user?.role === 'parent'
+                  ? 'Jadwal sesi belajar putra/putri Anda bersama guru pendamping.'
+                  : 'Atur alokasi waktu bimbingan per hari, guru pendamping, dan ruangan kelas.'}
               </p>
             </div>
           </div>
 
-          {can('create', 'jadwal') && (
-            <Button variant="primary" size="sm" onClick={() => setIsFormOpen(!isFormOpen)} className="shadow-xs text-xs font-bold h-9 px-4 rounded-xl ml-auto">
-              <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Jadwal
-            </Button>
-          )}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Filter by Teacher for Admin/Staff */}
+            {(user?.role === 'admin' || user?.role === 'staff') && (
+              <div className="w-44 sm:w-52">
+                <Select
+                  options={[
+                    { label: 'Semua Guru Pengajar', value: 'all' },
+                    ...teachers.map((t) => ({ label: t.name, value: t.id }))
+                  ]}
+                  value={adminTeacherFilter}
+                  onChange={(val) => setAdminTeacherFilter(val || 'all')}
+                  isSearchable
+                  isClearable={false}
+                />
+              </div>
+            )}
+
+            {user?.role === 'teacher' && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-bold border border-emerald-200">
+                <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="truncate max-w-[150px]">{currentTeacher?.name || user?.full_name}</span>
+              </div>
+            )}
+
+            {can('create', 'jadwal') && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  if (user?.role === 'teacher' && currentTeacherId) {
+                    setJTeacherId(currentTeacherId);
+                  }
+                  setIsFormOpen(!isFormOpen);
+                }}
+                className="shadow-xs text-xs font-bold h-9 px-4 rounded-xl"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1 text-amber-300" /> Tambah Jadwal
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Day Filter Pills Integrated Row */}
@@ -211,7 +299,7 @@ export default function JadwalPage() {
                 : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60'
             }`}
           >
-            Semua Hari ({schedules.length})
+            Semua Hari ({roleFilteredSchedules.length})
           </button>
           {daysList.map((day) => {
             const count = (scheduleByDay[day] || []).length;

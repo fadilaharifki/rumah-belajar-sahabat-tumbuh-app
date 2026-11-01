@@ -10,6 +10,7 @@ export interface Teacher {
   subjects?: string[];
   hourly_rate?: number;
   session_rate: number;
+  supervisor_id?: string | null;
   status?: string;
 }
 

@@ -41,7 +41,7 @@ export const SessionLogModal: React.FC<SessionLogModalProps> = ({ onSubmitLog })
       activities,
       results_recommendations: recommendations,
       session_fee: 85000,
-      verified: true
+      verified: false
     };
 
     setIsSaved(true);

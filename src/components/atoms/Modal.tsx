@@ -63,7 +63,7 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         className={twMerge(
           clsx(
-            'absolute sm:relative bottom-0 inset-x-0 sm:inset-auto w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col bg-white rounded-t-3xl rounded-b-none sm:rounded-2xl shadow-2xl border-t border-x border-b-0 sm:border border-slate-200 p-5 sm:p-6 pb-8 sm:pb-6 space-y-4 animate-bottom-sheet sm:animate-modal-desktop overflow-visible -mb-5 sm:mb-0 shrink-0 transform-gpu mx-auto',
+            'absolute sm:relative bottom-0 inset-x-0 sm:inset-auto w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col bg-white rounded-t-3xl rounded-b-none sm:rounded-2xl shadow-2xl border-t border-x border-b-0 sm:border border-slate-200 p-4 sm:p-6 pb-6 sm:pb-6 space-y-4 animate-bottom-sheet sm:animate-modal-desktop overflow-hidden shrink-0 transform-gpu mx-auto',
             maxWidthClasses[maxWidth],
             className
           )
@@ -75,20 +75,20 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Header */}
         {(title || showCloseButton) && (
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 pr-2">
               {Icon && (
-                <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
-                  <Icon className="w-5 h-5" />
+                <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               )}
               <div className="min-w-0">
                 {title && (
-                  <h3 className="font-bold text-slate-900 text-base leading-tight truncate">
+                  <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-tight break-words sm:truncate">
                     {title}
                   </h3>
                 )}
                 {subtitle && (
-                  <p className="text-xs text-slate-500 font-medium truncate">
+                  <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
                     {subtitle}
                   </p>
                 )}
@@ -99,7 +99,7 @@ export const Modal: React.FC<ModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition cursor-pointer shrink-0 ml-2"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition cursor-pointer shrink-0 ml-1"
                 title="Tutup Modal"
               >
                 <X className="w-5 h-5" />
@@ -109,7 +109,7 @@ export const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Modal Body / Children */}
-        <div className="flex-1 overflow-y-auto overflow-x-visible pr-0.5 space-y-4">{children}</div>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden pr-0.5 space-y-4">{children}</div>
       </div>
     </div>
   );

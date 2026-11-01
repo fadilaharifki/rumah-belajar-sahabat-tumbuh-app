@@ -151,6 +151,12 @@ export async function POST(request: Request) {
           .select()
           .single();
 
+        // Guarantee public.users has the correct full_name
+        await supabase
+          .from('users')
+          .update({ full_name: new_parent_name, phone: new_parent_phone })
+          .ilike('email', targetEmail);
+
         const { data: createdParent, error: parentErr } = await supabase
           .from('parents')
           .insert([{

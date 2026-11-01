@@ -13,7 +13,8 @@ import {
   HeartHandshake,
   Users,
   Calculator,
-  ShieldCheck
+  ShieldCheck,
+  ClipboardCheck
 } from 'lucide-react';
 import { useAbility } from '@/hooks/useAbility';
 
@@ -30,6 +31,7 @@ export const MobileBottomNav: React.FC = () => {
 
   // Candidate items filtered strictly by user permissions
   const candidateItems = [
+    { key: 'approval', label: 'Approval', href: '/approval', icon: ClipboardCheck, isAllowed: can('approve', 'presensi') },
     { key: 'jadwal', label: 'Jadwal', href: '/jadwal', icon: CalendarDays, isAllowed: can('read', 'jadwal') },
     { key: 'guru', label: 'Guru', href: '/data-guru', icon: UserCheck, isAllowed: can('read', 'guru') },
     { key: 'siswa', label: 'Siswa', href: '/data-siswa', icon: GraduationCap, isAllowed: can('read', 'siswa') },

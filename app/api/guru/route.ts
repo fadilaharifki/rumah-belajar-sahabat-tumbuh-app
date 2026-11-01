@@ -27,18 +27,61 @@ export async function GET(request: Request) {
     else if (sortBy === 'session_rate') dbSortColumn = 'session_rate';
     else if (sortBy === 'created_at') dbSortColumn = 'created_at';
 
-    const { data, error } = await supabase
+    let data: any = null;
+    let queryError: any = null;
+
+    // 1. Try embedding users via user_id relationship (handles case when supervisor_id FK exists)
+    const res1 = await supabase
       .from('teachers')
-      .select('*, users(status, role_id, avatar_url)')
+      .select('*, users!user_id(status, role_id, avatar_url)')
       .order(dbSortColumn, { ascending: isAscending });
 
-    if (error) {
-      console.warn('Supabase guru query error:', error.message);
-      return NextResponse.json({ data: [], source: 'error', error: error.message });
+    if (!res1.error && res1.data) {
+      data = res1.data;
+    } else {
+      // 2. Try default users embedding (if only single relationship exists)
+      const res2 = await supabase
+        .from('teachers')
+        .select('*, users(status, role_id, avatar_url)')
+        .order(dbSortColumn, { ascending: isAscending });
+
+      if (!res2.error && res2.data) {
+        data = res2.data;
+      } else {
+        // 3. Resilient fallback: Select teachers directly without relationship embedding
+        const res3 = await supabase
+          .from('teachers')
+          .select('*')
+          .order(dbSortColumn, { ascending: isAscending });
+
+        if (res3.error) {
+          console.warn('Supabase guru query error:', res3.error.message);
+          return NextResponse.json({ data: [], source: 'error', error: res3.error.message });
+        }
+
+        // Enrich with users data if user_id exists
+        const rawTeachers = res3.data || [];
+        const userIds = rawTeachers.map((t: any) => t.user_id).filter(Boolean);
+        if (userIds.length > 0) {
+          const { data: usersData } = await supabase
+            .from('users')
+            .select('id, status, role_id, avatar_url')
+            .in('id', userIds);
+
+          const userMap = new Map((usersData || []).map((u: any) => [u.id, u]));
+          data = rawTeachers.map((t: any) => ({
+            ...t,
+            users: userMap.get(t.user_id) || null
+          }));
+        } else {
+          data = rawTeachers;
+        }
+      }
     }
 
     const formatted = (data || []).map((t: any) => ({
       id: t.id,
+      user_id: t.user_id || null,
       name: t.name,
       email: t.email,
       phone: t.phone,
@@ -47,6 +90,7 @@ export async function GET(request: Request) {
       avatar_url: t.photo_url || t.users?.avatar_url || '',
       subjects: t.subjects || ['Umum', 'Pendampingan'],
       role_id: t.users?.role_id || t.user_id || GURU_ROLE_ID,
+      supervisor_id: t.supervisor_id || null,
       status: t.users?.status || t.status || 'Aktif'
     }));
 
@@ -60,7 +104,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, phone, session_rate, photo_url, avatar_url, subjects } = body;
+    const { name, email, phone, session_rate, photo_url, avatar_url, subjects, supervisor_id } = body;
 
     if (!name || !email || !phone) {
       return NextResponse.json(
@@ -106,6 +150,7 @@ export async function POST(request: Request) {
         session_rate: session_rate || 85000,
         photo_url: targetPhoto,
         subjects: subjects || ['Umum', 'Pendampingan'],
+        supervisor_id: supervisor_id || null,
         status: 'Aktif'
       };
 
@@ -122,6 +167,12 @@ export async function POST(request: Request) {
         target_email: cleanEmail,
         new_password: randomPassword
       });
+
+      // 4. Guarantee full_name in public.users is preserved and not overwritten by auth trigger
+      await supabase
+        .from('users')
+        .update({ full_name: name, phone })
+        .ilike('email', cleanEmail);
 
       return NextResponse.json({
         success: true,

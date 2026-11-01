@@ -56,7 +56,7 @@ export default function PenggajianPage() {
         (p) =>
           p.teacher_id === teacher.id &&
           p.date.startsWith(selectedMonth) &&
-          (p.status === 'Valid' || p.status === 'ManualVerified' || Boolean(p.session_log))
+          (p.status === 'Valid' || p.status === 'ManualVerified')
       );
 
       const totalSessions = validSessions.length;

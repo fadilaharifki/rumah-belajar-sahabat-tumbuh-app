@@ -1,0 +1,60 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Supabase free tier pauses after 7 days of inactivity.
+    # This workflow runs at 00:00 UTC every 3 days to keep the project active.
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab anytime
+
+jobs:
+  ping-supabase:
+    name: Ping Supabase & Prevent Free Tier Sleep
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            echo "📡 Sending keep-alive query to Supabase: $SUPABASE_URL"
+            HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" -X GET "$SUPABASE_URL/rest/v1/roles?select=id&limit=1" \
+              -H "apikey: $SUPABASE_ANON_KEY" \
+              -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+
+            echo "Supabase HTTP Status: $HTTP_CODE"
+            cat response.json
+            echo ""
+
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "✅ Supabase project successfully kept alive!"
+            else
+              echo "❌ Error: Received HTTP $HTTP_CODE from Supabase"
+              exit 1
+            fi
+          else
+            echo "⚠️ Neither NEXT_PUBLIC_SUPABASE_URL nor SUPABASE_URL secret is set in GitHub Repository Secrets."
+            echo "Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your GitHub repo secrets."
+            exit 1
+          fi
+
+      - name: Ping Deployed Next.js Keep-Alive Route (Optional)
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -n "$APP_URL" ]; then
+            echo "🌐 Pinging Web App endpoint: $APP_URL/api/cron/keep-alive"
+            AUTH_HEADER=""
+            if [ -n "$CRON_SECRET" ]; then
+              AUTH_HEADER="Authorization: Bearer $CRON_SECRET"
+            fi
+
+            HTTP_CODE=$(curl -s -o app_response.json -w "%{http_code}" -X GET "$APP_URL/api/cron/keep-alive" \
+              -H "$AUTH_HEADER")
+
+            echo "App HTTP Status: $HTTP_CODE"
+            cat app_response.json
+            echo ""
+          fi

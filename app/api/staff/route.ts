@@ -130,6 +130,12 @@ export async function POST(request: Request) {
         new_password: randomPassword
       });
 
+      // 4. Guarantee full_name in public.users is preserved
+      await supabase
+        .from('users')
+        .update({ full_name: name, phone })
+        .ilike('email', cleanEmail);
+
       return NextResponse.json({
         success: true,
         data: {
