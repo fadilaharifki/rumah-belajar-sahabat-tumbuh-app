@@ -31,14 +31,18 @@ export const UserProfileDropdown: React.FC = () => {
   };
 
   const getRoleLabel = (role: string | null) => {
+    if (user?.role_name) return user.role_name;
+    if (user?.role_id === '55555555-5555-5555-5555-000000000005') return 'Guru Senior / Koordinator';
     if (!role) return 'Pengguna';
     switch (role) {
       case 'admin':
-        return 'Admin / Pemilik';
+        return 'Pemilik / Admin Utama';
       case 'teacher':
         return 'Pengajar / Guru';
       case 'parent':
         return 'Orang Tua / Wali';
+      case 'staff':
+        return 'Staff Administrasi';
       default:
         return role;
     }
@@ -49,16 +53,16 @@ export const UserProfileDropdown: React.FC = () => {
       {/* User Info Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2.5 p-1 sm:px-2.5 sm:py-1.5 rounded-2xl border border-slate-200/90 bg-white/90 backdrop-blur-xs hover:bg-slate-50 hover:border-emerald-300/80 shadow-2xs transition-all duration-200 cursor-pointer group"
+        className="flex items-center gap-2.5 p-1 md:px-2.5 md:py-1.5 rounded-full md:rounded-2xl border border-slate-200/90 bg-white/90 backdrop-blur-xs hover:bg-slate-50 hover:border-emerald-300/80 shadow-2xs transition-all duration-200 cursor-pointer group"
       >
-        <div className="relative">
+        <div className="relative shrink-0 flex items-center justify-center">
           <Avatar
             src={user?.avatar_url}
             name={user?.full_name || 'Pengguna'}
             size="sm"
-            className="ring-2 ring-emerald-500/80 shadow-2xs group-hover:scale-105 transition-transform duration-200"
+            className="group-hover:scale-105 transition-transform duration-200"
           />
-          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
+          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 ring-2 ring-white rounded-full" />
         </div>
 
         <div className="hidden md:block text-left space-y-0.5 min-w-0 max-w-[130px]">
@@ -75,37 +79,36 @@ export const UserProfileDropdown: React.FC = () => {
 
       {/* Popover Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2.5 w-72 sm:w-76 bg-white/95 backdrop-blur-md rounded-2xl p-3.5 shadow-2xl shadow-slate-300/50 border border-slate-200/90 animate-in fade-in zoom-in-95 duration-150 space-y-3">
+        <div className="absolute right-0 mt-2.5 w-72 max-w-[calc(100vw-2rem)] sm:w-76 bg-white rounded-2xl p-3.5 shadow-2xl border border-slate-200/90 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3">
           {/* User Profile Header Card */}
-          <div className="p-3.5 rounded-xl bg-gradient-to-br from-emerald-50/80 via-emerald-50/40 to-amber-50/40 border border-emerald-200/70 space-y-2.5 relative overflow-hidden">
-            <div className="flex items-center gap-3">
-              <div className="relative shrink-0">
+          <div className="p-3.5 rounded-xl bg-gradient-to-br from-emerald-50/90 via-emerald-50/50 to-amber-50/50 border border-emerald-200/70 space-y-2.5 relative overflow-hidden">
+            <div className="flex items-start gap-3">
+              <div className="relative shrink-0 flex items-center justify-center mt-0.5">
                 <Avatar
                   src={user?.avatar_url}
                   name={user?.full_name || 'Pengguna'}
                   size="md"
-                  className="ring-2 ring-emerald-500 shadow-xs"
+                  className="shadow-xs"
                 />
-                <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 ring-2 ring-white rounded-full" />
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 space-y-1">
                 <p className="font-extrabold text-sm text-slate-900 truncate leading-snug">
                   {user?.full_name}
                 </p>
                 <p className="text-[11px] text-slate-500 font-medium truncate">
                   {user?.email}
                 </p>
+                <div className="pt-0.5">
+                  <Badge
+                    variant={activeRole === 'admin' ? 'amber' : 'emerald'}
+                    size="sm"
+                    className="font-bold text-[10px] inline-block max-w-full truncate"
+                  >
+                    {getRoleLabel(activeRole)}
+                  </Badge>
+                </div>
               </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-1 border-t border-emerald-200/50">
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-800">
-                <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Peran Aktif:</span>
-              </div>
-              <Badge variant={activeRole === 'admin' ? 'amber' : 'emerald'} size="sm" className="font-bold shadow-2xs">
-                {getRoleLabel(activeRole)}
-              </Badge>
             </div>
           </div>
 

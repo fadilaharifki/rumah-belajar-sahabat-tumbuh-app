@@ -23,7 +23,7 @@ export async function GET(request: Request) {
         user: {
           id: 'admin-1',
           full_name: 'Ibu Nurul (Pemilik / Admin)',
-          email: paramEmail || 'pemilik@rbst.com',
+          email: paramEmail || 'pemilik@sahabattumbuh.id',
           role: paramEmail?.includes('wali') ? 'parent' : paramEmail?.includes('guru') ? 'teacher' : 'admin',
           role_id: DEFAULT_ADMIN_ROLE_UUID,
           avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80'
@@ -56,10 +56,14 @@ export async function GET(request: Request) {
     let teacherId: string | undefined = undefined;
     let parentId: string | undefined = undefined;
 
-    if (supaEmail) {
+    if (supaEmail || dbUser?.id) {
+      const emailFilter = supaEmail ? `email.ilike.${supaEmail}` : '';
+      const userFilter = dbUser?.id ? `user_id.eq.${dbUser.id}` : '';
+      const combinedOr = [emailFilter, userFilter].filter(Boolean).join(',');
+
       const [{ data: teacherData }, { data: parentData }] = await Promise.all([
-        supabase.from('teachers').select('id').eq('email', supaEmail).maybeSingle(),
-        supabase.from('parents').select('id').eq('email', supaEmail).maybeSingle()
+        supabase.from('teachers').select('id').or(combinedOr).maybeSingle(),
+        supabase.from('parents').select('id').or(combinedOr).maybeSingle()
       ]);
 
       if (teacherData) teacherId = teacherData.id;
@@ -72,6 +76,16 @@ export async function GET(request: Request) {
     else if (roleId === DEFAULT_STAFF_ROLE_UUID || category === 'Staff') roleStr = 'staff';
     else if (roleId === DEFAULT_PARENT_ROLE_UUID || category === 'Wali') roleStr = 'parent';
     else if (roleId === DEFAULT_TEACHER_ROLE_UUID || category === 'Guru') roleStr = 'teacher';
+
+    // Fetch role name
+    let roleName = dbUser?.roles?.name;
+    if (!roleName && roleId) {
+      if (roleId === '55555555-5555-5555-5555-000000000005') roleName = 'Guru Senior / Koordinator';
+      else if (roleId === DEFAULT_ADMIN_ROLE_UUID) roleName = 'Pemilik / Admin Utama';
+      else if (roleId === DEFAULT_TEACHER_ROLE_UUID) roleName = 'Pengajar / Guru';
+      else if (roleId === DEFAULT_PARENT_ROLE_UUID) roleName = 'Wali Siswa / Orang Tua';
+      else if (roleId === DEFAULT_STAFF_ROLE_UUID) roleName = 'Staff Administrasi';
+    }
 
     // Fetch active permissions for this role
     const { data: rolePerms } = await supabase
@@ -86,9 +100,10 @@ export async function GET(request: Request) {
       user: {
         id: dbUser?.auth_user_id || dbUser?.id || `usr-${Date.now()}`,
         full_name: fullName,
-        email: supaEmail || 'pemilik@rbst.com',
+        email: supaEmail || 'pemilik@sahabattumbuh.id',
         role: roleStr,
         role_id: roleId,
+        role_name: roleName,
         teacher_id: teacherId,
         parent_id: parentId,
         avatar_url: avatarUrl

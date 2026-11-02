@@ -3,6 +3,7 @@ import { toast } from '@/stores/useToastStore';
 
 export interface TeacherItem {
   id: string;
+  user_id?: string;
   name: string;
   email: string;
   phone: string;
@@ -11,6 +12,7 @@ export interface TeacherItem {
   avatar_url?: string;
   subjects: string[];
   role_id: string;
+  supervisor_id?: string | null;
   status: string;
 }
 
@@ -97,6 +99,7 @@ export function useCreateGuruMutation() {
       photo_url?: string;
       avatar_url?: string;
       subjects?: string[];
+      supervisor_id?: string | null;
     }) => {
       const res = await fetch('/api/guru', {
         method: 'POST',
@@ -136,6 +139,7 @@ export function useUpdateGuruMutation() {
       photo_url?: string;
       avatar_url?: string;
       subjects?: string[];
+      supervisor_id?: string | null;
       status?: string;
       reset_password?: boolean;
     }) => {

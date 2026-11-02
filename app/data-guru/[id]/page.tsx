@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Mail, Phone, ClipboardList, GraduationCap, Calculator, ShieldCheck,
   MessageCircle, Calendar, Plus, Clock, MapPin, Trash2, Edit3, X, AlertTriangle,
-  CheckCircle2, AlertCircle, RefreshCw
+  CheckCircle2, AlertCircle, RefreshCw, XCircle
 } from 'lucide-react';
 import {
   useGuruDetailQuery,
@@ -105,7 +105,8 @@ export default function DetailGuruPage() {
   const payroll = detailData?.payroll;
 
   const sessionRate = teacher?.session_rate || 85000;
-  const totalSessions = attendanceList.length;
+  const validAttendance = attendanceList.filter((a: any) => a.status === 'Valid' || a.status === 'ManualVerified');
+  const totalSessions = validAttendance.length;
   const totalPayroll = payroll?.total_amount || totalSessions * sessionRate;
   const payrollStatus = payroll?.status || 'Lunas';
 
@@ -236,7 +237,6 @@ export default function DetailGuruPage() {
                   {teacher.status || 'Aktif'}
                 </Badge>
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-500 font-mono mt-0.5 truncate max-w-[220px] sm:max-w-none">ID Guru: {teacher.id}</p>
 
               <div className="flex flex-wrap gap-3 sm:gap-4 text-xs font-medium text-slate-600 mt-2 sm:mt-3 min-w-0">
                 <a
@@ -382,8 +382,8 @@ export default function DetailGuruPage() {
           <button
             onClick={() => setActiveTab('jadwal')}
             className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'jadwal'
-                ? 'bg-emerald-600 text-amber-300 shadow-md shadow-emerald-200 font-extrabold'
-                : 'bg-white text-slate-600 hover:bg-slate-100'
+              ? 'bg-emerald-600 text-amber-300 shadow-md shadow-emerald-200 font-extrabold'
+              : 'bg-white text-slate-600 hover:bg-slate-100'
               }`}
           >
             <Calendar className="w-4 h-4 shrink-0" />
@@ -393,8 +393,8 @@ export default function DetailGuruPage() {
           <button
             onClick={() => setActiveTab('absensi')}
             className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'absensi'
-                ? 'bg-emerald-600 text-amber-300 shadow-md shadow-emerald-200 font-extrabold'
-                : 'bg-white text-slate-600 hover:bg-slate-100'
+              ? 'bg-emerald-600 text-amber-300 shadow-md shadow-emerald-200 font-extrabold'
+              : 'bg-white text-slate-600 hover:bg-slate-100'
               }`}
           >
             <ClipboardList className="w-4 h-4 shrink-0" />
@@ -404,8 +404,8 @@ export default function DetailGuruPage() {
           <button
             onClick={() => setActiveTab('murid')}
             className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'murid'
-                ? 'bg-emerald-600 text-amber-300 shadow-md shadow-emerald-200 font-extrabold'
-                : 'bg-white text-slate-600 hover:bg-slate-100'
+              ? 'bg-emerald-600 text-amber-300 shadow-md shadow-emerald-200 font-extrabold'
+              : 'bg-white text-slate-600 hover:bg-slate-100'
               }`}
           >
             <GraduationCap className="w-4 h-4 shrink-0" />
@@ -415,8 +415,8 @@ export default function DetailGuruPage() {
           <button
             onClick={() => setActiveTab('payroll')}
             className={`flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold text-xs transition cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'payroll'
-                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-200 font-extrabold'
-                : 'bg-white text-slate-600 hover:bg-slate-100'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-200 font-extrabold'
+              : 'bg-white text-slate-600 hover:bg-slate-100'
               }`}
           >
             <Calculator className="w-4 h-4 shrink-0 text-emerald-800" />
@@ -613,10 +613,51 @@ export default function DetailGuruPage() {
                       <td className="px-4 sm:px-5 py-3.5 font-mono text-slate-600">{att.check_out || '-'}</td>
                       <td className="px-4 sm:px-5 py-3.5 font-mono font-bold text-slate-800">{att.duration_minutes}m</td>
                       <td className="px-4 sm:px-5 py-3.5 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                          <span>{att.status}</span>
-                        </span>
+                        {att.status === 'Valid' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>Valid</span>
+                          </span>
+                        ) : att.status === 'ManualVerified' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
+                            <ShieldCheck className="w-3 h-3 text-blue-600" />
+                            <span>Manual ACC</span>
+                          </span>
+                        ) : att.status === 'PendingApproval' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                            <Clock className="w-3 h-3 text-amber-700" />
+                            <span>Menunggu ACC</span>
+                          </span>
+                        ) : att.status === 'NeedRevision' ? (
+                          <div className="inline-flex flex-col items-center gap-0.5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-950 border border-orange-300">
+                              <AlertCircle className="w-3 h-3 text-orange-600" />
+                              <span>Perlu Revisi</span>
+                            </span>
+                            {att.approval_notes && (
+                              <span className="text-[9px] text-orange-800 max-w-[140px] truncate" title={att.approval_notes}>
+                                {att.approval_notes}
+                              </span>
+                            )}
+                          </div>
+                        ) : att.status === 'Invalid' ? (
+                          <div className="inline-flex flex-col items-center gap-0.5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
+                              <XCircle className="w-3 h-3 text-rose-600" />
+                              <span>Tidak Valid</span>
+                            </span>
+                            {att.approval_notes && (
+                              <span className="text-[9px] text-rose-700 max-w-[140px] truncate" title={att.approval_notes}>
+                                {att.approval_notes}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
+                            <Clock className="w-3 h-3 text-slate-500" />
+                            <span>Check-In</span>
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -750,17 +791,29 @@ export default function DetailGuruPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs font-medium">
                   {attendanceList.length > 0 ? (
-                    attendanceList.map((att: any, idx: number) => (
-                      <tr key={att.id || idx} className="hover:bg-amber-50/20 transition">
-                        <td className="px-4 sm:px-5 py-3.5 font-mono text-slate-500">#S-{idx + 101}</td>
-                        <td className="px-4 sm:px-5 py-3.5 font-mono font-bold text-slate-800 whitespace-nowrap">{att.date}</td>
-                        <td className="px-4 sm:px-5 py-3.5 font-bold text-slate-900 whitespace-nowrap">{att.student_name}</td>
-                        <td className="px-4 sm:px-5 py-3.5 font-mono text-slate-600">{formatRupiah(sessionRate)}</td>
-                        <td className="px-4 sm:px-5 py-3.5 text-right font-mono font-bold text-emerald-800">
-                          {formatRupiah(sessionRate)}
-                        </td>
-                      </tr>
-                    ))
+                    attendanceList.map((att: any, idx: number) => {
+                      const isApproved = att.status === 'Valid' || att.status === 'ManualVerified';
+                      return (
+                        <tr key={att.id || idx} className={`transition ${isApproved ? 'hover:bg-amber-50/20' : 'bg-slate-50/40 text-slate-400'}`}>
+                          <td className="px-4 sm:px-5 py-3.5 font-mono text-slate-500">#S-{idx + 101}</td>
+                          <td className="px-4 sm:px-5 py-3.5 font-mono font-bold text-slate-800 whitespace-nowrap">{att.date}</td>
+                          <td className="px-4 sm:px-5 py-3.5 font-bold text-slate-900 whitespace-nowrap">{att.student_name}</td>
+                          <td className="px-4 sm:px-5 py-3.5 font-mono text-slate-600">{formatRupiah(sessionRate)}</td>
+                          <td className="px-4 sm:px-5 py-3.5 text-right font-mono font-bold">
+                            {isApproved ? (
+                              <span className="text-emerald-800">{formatRupiah(sessionRate)}</span>
+                            ) : (
+                              <div className="text-right">
+                                <span className="text-slate-400 text-xs font-mono line-through block">Rp 0</span>
+                                <span className="text-[10px] text-amber-700 font-semibold">
+                                  {att.status === 'Invalid' ? 'Ditolak' : att.status === 'NeedRevision' ? 'Perlu Revisi' : 'Menunggu ACC'}
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td colSpan={5} className="text-center py-12 text-slate-400">

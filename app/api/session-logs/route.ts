@@ -6,6 +6,35 @@ const isSupabaseConfigured = Boolean(
   !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
 );
 
+// Helper to get Indonesian day name and current time in Asia/Jakarta (WIB)
+function getJakartaDateTime() {
+  const now = new Date();
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  const parts = dtf.formatToParts(now);
+  const m: Record<string, string> = {};
+  for (const p of parts) {
+    m[p.type] = p.value;
+  }
+  const dateStr = `${m.year}-${m.month}-${m.day}`;
+  const timeStr = `${m.hour}:${m.minute}`;
+
+  // Get day of week in Indonesia
+  const dateObj = new Date(`${dateStr}T12:00:00Z`);
+  const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const dayName = dayNames[dateObj.getUTCDay()];
+
+  return { dateStr, timeStr, dayName };
+}
+
 // GET /api/session-logs - List session logs
 export async function GET() {
   if (!isSupabaseConfigured) {
@@ -15,7 +44,7 @@ export async function GET() {
   try {
     const { data, error } = await supabase
       .from('session_logs')
-      .select('*, teachers(id, name), students(id, name, grade), attendance_records(*)')
+      .select('*, teachers(id, name, supervisor_id), students(id, name, grade), attendance_records(*)')
       .order('session_date', { ascending: false });
 
     if (error) throw error;
@@ -25,11 +54,20 @@ export async function GET() {
   }
 }
 
-// POST /api/session-logs - Create or update a paired session log (Smart Upsert + Auto-Pairing by teacher_id, student_id, & date)
+// POST /api/session-logs - Create or update a paired session log (Smart Upsert + Auto-Pairing with Strict Schedule & 23:59 Cutoff Validation)
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { attendance_id, teacher_id, student_id, session_number, activities, results_recommendations, session_date } = body;
+    const { 
+      attendance_id, 
+      teacher_id, 
+      student_id, 
+      session_number, 
+      activities, 
+      results_recommendations, 
+      session_date,
+      is_admin_override
+    } = body;
 
     if (!teacher_id || !student_id || !activities || !results_recommendations) {
       return NextResponse.json(
@@ -38,11 +76,93 @@ export async function POST(request: Request) {
       );
     }
 
-    const sDate = session_date || new Date().toISOString().slice(0, 10);
+    const { dateStr: todayWIB, timeStr: nowTimeWIB, dayName: currentDayName } = getJakartaDateTime();
+    const sDate = session_date || todayWIB;
     let targetAttId = attendance_id;
 
     if (isSupabaseConfigured) {
-      // 1. If attendance_id is not provided, look up matching attendance_record for this specific teacher_id, student_id, & date
+      // 0. Cek apakah ini sesi yang sedang direvisi (NeedRevision atau Invalid dengan catatan dari supervisor)
+      let isRevisionSession = false;
+      if (targetAttId) {
+        const { data: currentAtt } = await supabase
+          .from('attendance_records')
+          .select('id, status, approval_notes')
+          .eq('id', targetAttId)
+          .maybeSingle();
+
+        if (currentAtt && (currentAtt.status === 'NeedRevision' || (currentAtt.status === 'Invalid' && currentAtt.approval_notes))) {
+          isRevisionSession = true;
+        }
+      }
+
+      // 1. Validasi Batas Waktu & Hari Jadwal Belajar Siswa (Kecuali bypass oleh Pemilik/Admin atau sedang revisi laporan)
+      if (!is_admin_override && !isRevisionSession) {
+        // A. Cek apakah tanggal di masa depan
+        if (sDate > todayWIB) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: `Sesi belajar belum berlangsung! Anda tidak dapat mengisi evaluasi untuk tanggal di masa depan (${sDate}).` 
+            },
+            { status: 400 }
+          );
+        }
+
+        // B. Cek batas jam 12 malam (lewat hari sDate < todayWIB)
+        if (sDate < todayWIB) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: `Batas waktu pengisian evaluasi untuk sesi tanggal ${sDate} telah berakhir (maksimal pukul 23:59 WIB pada hari jadwal belajar). Form terkunci.` 
+            },
+            { status: 400 }
+          );
+        }
+
+        // C. Cek apakah hari ini siswa memang ada jadwal belajar aktif
+        const { data: activeSchedules } = await supabase
+          .from('schedules')
+          .select('id, day_of_week, start_time, end_time, status')
+          .eq('student_id', student_id)
+          .eq('status', 'Aktif');
+
+        const todaySchedule = (activeSchedules || []).find(
+          (sc: any) => sc.day_of_week === currentDayName
+        );
+
+        if (!todaySchedule && (activeSchedules || []).length > 0) {
+          const availableDays = activeSchedules?.map((sc: any) => sc.day_of_week).join(', ');
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Siswa ini tidak memiliki jadwal belajar pada hari ini (${currentDayName}). Jadwal siswa: ${availableDays}. Laporan evaluasi hanya bisa disubmit pada hari jadwal siswa.`
+            },
+            { status: 400 }
+          );
+        }
+
+        // D. Cek jam masuk (jangan submit sebelum jam sesi dimulai)
+        if (todaySchedule?.start_time && nowTimeWIB < todaySchedule.start_time.substring(0, 5)) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Sesi belajar belum dimulai (Jadwal hari ${currentDayName}: ${todaySchedule.start_time.substring(0, 5)} - ${todaySchedule.end_time?.substring(0, 5) || ''} WIB). Laporan evaluasi baru bisa disubmit saat jam belajar dimulai.`
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      // 2. Ambil data atasan/supervisor guru yang bersangkutan
+      const { data: teacherData } = await supabase
+        .from('teachers')
+        .select('supervisor_id')
+        .eq('id', teacher_id)
+        .maybeSingle();
+
+      const approverId = teacherData?.supervisor_id || null;
+
+      // 3. Cari attendance_record jika belum terpasang
       if (!targetAttId) {
         const { data: matchedAtt } = await supabase
           .from('attendance_records')
@@ -59,7 +179,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // 2. Check if a session log already exists for targetAttId OR (teacher_id + student_id + session_date)
+      // 4. Cek apakah session log sudah ada sebelumnya (untuk di-update)
       let existingLog: any = null;
 
       if (targetAttId) {
@@ -90,13 +210,14 @@ export async function POST(request: Request) {
         activities,
         results_recommendations,
         session_date: sDate,
-        verified: true
+        approval_status: 'PendingApproval',
+        approver_id: approverId,
+        verified: false
       };
 
       let logData: any = null;
 
       if (existingLog) {
-        // Update existing log belonging to this teacher & student
         const { data: updated, error: updateErr } = await supabase
           .from('session_logs')
           .update(payload)
@@ -107,7 +228,6 @@ export async function POST(request: Request) {
         if (updateErr) throw updateErr;
         logData = updated;
       } else {
-        // Insert new log for this teacher & student
         const { data: inserted, error: insertErr } = await supabase
           .from('session_logs')
           .insert([payload])
@@ -118,18 +238,21 @@ export async function POST(request: Request) {
         logData = inserted;
       }
 
-      // 3. Update paired attendance_records status to 'Valid' if matched
+      // 5. Update status attendance_records ke 'PendingApproval'
       if (targetAttId) {
         await supabase
           .from('attendance_records')
-          .update({ status: 'Valid' })
+          .update({ 
+            status: 'PendingApproval',
+            approved_by: approverId
+          })
           .eq('id', targetAttId);
       }
 
       return NextResponse.json({
         success: true,
         data: logData,
-        message: 'Laporan belajar siswa berhasil tersimpan! Status sesi kini Terverifikasi & Valid.'
+        message: 'Laporan evaluasi belajar siswa berhasil disimpan! Status sesi kini Menunggu Approval dari Atasan.'
       });
     }
 

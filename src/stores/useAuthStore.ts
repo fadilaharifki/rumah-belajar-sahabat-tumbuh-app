@@ -9,6 +9,7 @@ export interface UserProfile {
   email: string;
   role: 'admin' | 'teacher' | 'parent' | 'staff';
   role_id?: string;
+  role_name?: string;
   teacher_id?: string;
   parent_id?: string;
   avatar_url?: string;

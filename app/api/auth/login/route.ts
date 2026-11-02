@@ -94,23 +94,51 @@ export async function POST(request: Request) {
         let avatarUrl = supaUser.user_metadata?.avatar_url;
 
         // Query public.users profile for role metadata
+        let userRoleId: string | undefined;
+        let userRoleName: string | undefined;
+        let linkedTeacherId: string | undefined;
+        let linkedParentId: string | undefined;
+
         try {
           const { data: profile } = await supabase
             .from('users')
-            .select('*')
+            .select('*, roles(*)')
             .or(`auth_user_id.eq.${supaUser.id},email.eq.${cleanEmail}`)
             .maybeSingle();
 
           if (profile) {
             fullName = profile.full_name || fullName;
             avatarUrl = profile.avatar_url || avatarUrl;
+            userRoleId = profile.role_id;
+            userRoleName = profile.roles?.name;
+
             if (profile.category === 'Pemilik') role = 'admin';
             else if (profile.category === 'Wali') role = 'parent';
             else if (profile.category === 'Staff') role = 'staff';
             else role = 'teacher';
+
+            // Resolve linked teacher or parent id
+            const emailFilter = cleanEmail ? `email.ilike.${cleanEmail}` : '';
+            const userFilter = profile.id ? `user_id.eq.${profile.id}` : '';
+            const combinedOr = [emailFilter, userFilter].filter(Boolean).join(',');
+
+            const [{ data: tData }, { data: pData }] = await Promise.all([
+              supabase.from('teachers').select('id').or(combinedOr).maybeSingle(),
+              supabase.from('parents').select('id').or(combinedOr).maybeSingle()
+            ]);
+            if (tData) linkedTeacherId = tData.id;
+            if (pData) linkedParentId = pData.id;
           }
         } catch {
           // ignore db user error
+        }
+
+        if (!userRoleName && userRoleId) {
+          if (userRoleId === '55555555-5555-5555-5555-000000000005') userRoleName = 'Guru Senior / Koordinator';
+          else if (role === 'admin') userRoleName = 'Pemilik / Admin Utama';
+          else if (role === 'teacher') userRoleName = 'Pengajar / Guru';
+          else if (role === 'parent') userRoleName = 'Wali Siswa / Orang Tua';
+          else if (role === 'staff') userRoleName = 'Staff Administrasi';
         }
 
         return NextResponse.json({
@@ -120,6 +148,10 @@ export async function POST(request: Request) {
             full_name: fullName,
             email: supaUser.email || cleanEmail,
             role,
+            role_id: userRoleId,
+            role_name: userRoleName || (role === 'admin' ? 'Pemilik / Admin Utama' : role === 'teacher' ? 'Pengajar / Guru' : 'Wali Siswa'),
+            teacher_id: linkedTeacherId,
+            parent_id: linkedParentId,
             avatar_url: avatarUrl
           }
         });
@@ -132,6 +164,10 @@ export async function POST(request: Request) {
         else if (dbUserFound.category === 'Wali') role = 'parent';
         else if (dbUserFound.category === 'Staff') role = 'staff';
 
+        let fbRoleName = dbUserFound.role_id === '55555555-5555-5555-5555-000000000005'
+          ? 'Guru Senior / Koordinator'
+          : (role === 'admin' ? 'Pemilik / Admin Utama' : role === 'teacher' ? 'Pengajar / Guru' : 'Wali Siswa');
+
         return NextResponse.json({
           success: true,
           user: {
@@ -139,6 +175,8 @@ export async function POST(request: Request) {
             full_name: dbUserFound.full_name || cleanEmail.split('@')[0],
             email: dbUserFound.email,
             role,
+            role_id: dbUserFound.role_id,
+            role_name: fbRoleName,
             avatar_url: dbUserFound.avatar_url || ''
           }
         });
@@ -160,7 +198,7 @@ export async function POST(request: Request) {
         user: {
           id: 'admin-1',
           full_name: 'Ibu Nurul (Pemilik / Admin)',
-          email: 'pemilik@rbst.com',
+          email: 'pemilik@sahabattumbuh.id',
           role: 'admin',
           avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80'
         }

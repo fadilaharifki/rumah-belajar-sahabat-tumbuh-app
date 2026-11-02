@@ -49,34 +49,43 @@ export const useCreateRoleMutation = () => {
   });
 };
 
-// Custom Hook Mutation for Updating Role Permissions
-export const useUpdateRolePermissionsMutation = () => {
+export interface UpdateRolePayload {
+  roleId: string;
+  name?: string;
+  description?: string;
+  permissions?: string[];
+}
+
+// Custom Hook Mutation for Updating Role Details & Permissions
+export const useUpdateRoleMutation = () => {
   const queryClient = useQueryClient();
-  const { updateRolePermissions } = useRoleStore();
+  const { updateRole } = useRoleStore();
 
   return useMutation({
-    mutationFn: async ({ roleId, permissions }: { roleId: string; permissions: string[] }) => {
+    mutationFn: async ({ roleId, name, description, permissions }: UpdateRolePayload) => {
       const res = await fetch(`/api/roles/${roleId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ permissions })
+        body: JSON.stringify({ name, description, permissions })
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Gagal memperbarui ability peran!');
+        throw new Error(json.error || 'Gagal memperbarui data peran!');
       }
-      return { roleId, permissions };
+      return { roleId, name, description, permissions };
     },
-    onSuccess: ({ roleId, permissions }) => {
-      updateRolePermissions(roleId, permissions);
+    onSuccess: ({ roleId, name, description, permissions }) => {
+      updateRole(roleId, { name, description, permissions });
       queryClient.invalidateQueries({ queryKey: ['roles'] });
-      toast.success('Ability hak akses peran berhasil diperbarui!');
+      toast.success('Data peran & ability berhasil diperbarui!');
     },
     onError: (err: any) => {
-      toast.error(err.message || 'Gagal mengubah ability peran!');
+      toast.error(err.message || 'Gagal mengubah data peran!');
     }
   });
 };
+
+export const useUpdateRolePermissionsMutation = useUpdateRoleMutation;
 
 // Custom Hook Mutation for Deleting Custom Role
 export const useDeleteRoleMutation = () => {

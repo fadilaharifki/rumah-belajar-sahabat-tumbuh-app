@@ -6,6 +6,14 @@ const isSupabaseConfigured = Boolean(
   !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
 );
 
+const PRESET_ROLE_NAMES: Record<string, string> = {
+  '11111111-1111-1111-1111-000000000001': 'Pemilik / Admin Utama',
+  '22222222-2222-2222-2222-000000000002': 'Pengajar / Guru Pendamping',
+  '55555555-5555-5555-5555-000000000005': 'Guru Senior / Koordinator',
+  '33333333-3333-3333-3333-000000000003': 'Wali Siswa / Orang Tua',
+  '44444444-4444-4444-4444-000000000004': 'Staff Administrasi & Keuangan'
+};
+
 // GET /api/users - Fetch users from public.users with optional category/role_id filter
 export async function GET(request: Request) {
   if (!isSupabaseConfigured) {
@@ -45,7 +53,41 @@ export async function GET(request: Request) {
       return NextResponse.json({ data: [], source: 'error', error: error.message });
     }
 
-    const formatted = (data || []).map((u: any) => {
+    const rawUsers = data || [];
+
+    // Auto-heal any user rows where full_name is 'Pengguna Baru' or empty by looking up real names
+    const needsHeal = rawUsers.filter((u: any) => !u.full_name || u.full_name === 'Pengguna Baru' || u.full_name === 'Pengguna');
+    if (needsHeal.length > 0) {
+      const healEmails = needsHeal.map((u: any) => (u.email || '').toLowerCase().trim()).filter(Boolean);
+      try {
+        const [tRes, pRes, sRes] = await Promise.all([
+          supabase.from('teachers').select('email, name').in('email', healEmails),
+          supabase.from('parents').select('email, name').in('email', healEmails),
+          supabase.from('staff').select('email, name').in('email', healEmails)
+        ]);
+
+        const nameMap = new Map<string, string>();
+        (tRes.data || []).forEach((t: any) => { if (t.email && t.name) nameMap.set(t.email.toLowerCase().trim(), t.name); });
+        (pRes.data || []).forEach((p: any) => { if (p.email && p.name) nameMap.set(p.email.toLowerCase().trim(), p.name); });
+        (sRes.data || []).forEach((s: any) => { if (s.email && s.name) nameMap.set(s.email.toLowerCase().trim(), s.name); });
+
+        for (const u of rawUsers) {
+          if (!u.full_name || u.full_name === 'Pengguna Baru' || u.full_name === 'Pengguna') {
+            const emailKey = (u.email || '').toLowerCase().trim();
+            const recoveredName = nameMap.get(emailKey);
+            if (recoveredName) {
+              u.full_name = recoveredName;
+              // Background update public.users to persist the recovered name
+              supabase.from('users').update({ full_name: recoveredName }).eq('id', u.id).then();
+            }
+          }
+        }
+      } catch (healErr) {
+        console.warn('Auto-heal users note:', healErr);
+      }
+    }
+
+    const formatted = rawUsers.map((u: any) => {
       const name = u.full_name || u.name || (u.email ? u.email.split('@')[0] : 'Pengguna');
       return {
         id: u.id,
@@ -56,7 +98,7 @@ export async function GET(request: Request) {
         avatar_url: u.avatar_url || '',
         category: u.category || 'Pengguna',
         role_id: u.role_id,
-        role_name: u.roles?.name || u.category || 'Pengguna System',
+        role_name: u.roles?.name || (u.role_id ? PRESET_ROLE_NAMES[u.role_id] : null) || u.category || 'Pengguna System',
         status: u.status || 'Aktif',
         created_at: u.created_at
       };

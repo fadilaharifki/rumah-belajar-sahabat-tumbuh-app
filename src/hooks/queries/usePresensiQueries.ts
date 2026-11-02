@@ -15,12 +15,22 @@ export interface PresensiItem {
   check_in: string;
   check_out?: string;
   duration_minutes?: number;
-  status: 'CheckIn' | 'Valid' | 'ManualVerified';
+  status: 'CheckIn' | 'PendingApproval' | 'Valid' | 'Invalid' | 'ManualVerified' | 'NeedRevision';
+  approved_by?: string | null;
+  approval_notes?: string | null;
+  approved_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
   session_log?: {
     id: string;
     session_number: number;
     activities: string;
     results_recommendations: string;
+    approval_status?: 'PendingApproval' | 'Valid' | 'Invalid' | 'NeedRevision';
+    approver_id?: string | null;
+    rejection_reason?: string | null;
+    created_at?: string;
+    updated_at?: string;
   } | null;
 }
 
@@ -162,6 +172,45 @@ export function useManualVerifyMutation() {
     },
     onError: (err: any) => {
       toast.error(err.message || 'Gagal memvalidasi sesi!');
+    }
+  });
+}
+
+// Approval Mutation by Supervisor / Pemilik
+export function useApprovalPresensiMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      status,
+      approved_by,
+      approval_notes
+    }: {
+      id: string;
+      status: 'Valid' | 'Invalid' | 'PendingApproval';
+      approved_by?: string;
+      approval_notes?: string;
+    }) => {
+      const res = await fetch(`/api/presensi/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, approved_by, approval_notes })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Gagal memproses approval laporan');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: PRESENSI_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['presensi-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['guru-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['payroll'] });
+      toast.success(data?.message || 'Status laporan evaluasi berhasil diperbarui!');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal memproses approval!');
     }
   });
 }

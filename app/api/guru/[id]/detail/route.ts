@@ -27,11 +27,34 @@ export async function GET(
     }
 
     // 1. Fetch teacher details to confirm rate
-    const { data: teacher } = await supabase
+    let teacher: any = null;
+    const tRes1 = await supabase
       .from('teachers')
-      .select('*, users(status, avatar_url)')
+      .select('*, users!user_id(status, avatar_url)')
       .eq('id', id)
       .maybeSingle();
+
+    if (!tRes1.error && tRes1.data) {
+      teacher = tRes1.data;
+    } else {
+      const tRes2 = await supabase
+        .from('teachers')
+        .select('*, users(status, avatar_url)')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (!tRes2.error && tRes2.data) {
+        teacher = tRes2.data;
+      } else {
+        const tRes3 = await supabase
+          .from('teachers')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+
+        teacher = tRes3.data;
+      }
+    }
 
     if (!teacher) {
       return NextResponse.json({ error: 'Guru tidak ditemukan' }, { status: 404 });
@@ -51,7 +74,8 @@ export async function GET(
       check_in: att.check_in,
       check_out: att.check_out || '-',
       duration_minutes: att.duration_minutes || 60,
-      status: att.status || 'Terverifikasi'
+      status: att.status || 'CheckIn',
+      approval_notes: att.approval_notes || null
     }));
 
     // Filter attendance by requested month

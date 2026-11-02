@@ -13,6 +13,7 @@ import {
   Settings,
   UserCog,
   Camera,
+  ClipboardCheck,
   ChevronLeft,
   ChevronRight,
   X,
@@ -20,11 +21,16 @@ import {
 } from 'lucide-react';
 import { useUIStore } from '@/stores/useUIStore';
 import { useAbility } from '@/hooks/useAbility';
+import { useApprovalListQuery } from '@/hooks/queries/useApprovalQueries';
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
-  const { isSidebarOpen, isSidebarCollapsed, toggleSidebar, toggleSidebarCollapse } = useUIStore();
+  const { isSidebarOpen, isSidebarCollapsed, toggleSidebar, closeSidebar, toggleSidebarCollapse } = useUIStore();
   const { can } = useAbility();
+
+  const canApprove = can('approve', 'presensi');
+  const { data: approvalStats } = useApprovalListQuery({ status: 'PendingApproval' });
+  const pendingCount = canApprove ? (approvalStats?.counts?.pending || 0) : 0;
 
   const isRouteActive = (currentPath: string, href: string) => {
     if (href === '/') return currentPath === '/';
@@ -33,6 +39,7 @@ export const Sidebar: React.FC = () => {
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard, isVisible: can('read', 'dashboard') },
+    { name: 'Approval Evaluasi', href: '/approval', icon: ClipboardCheck, isVisible: canApprove, badge: pendingCount },
     { name: 'Presensi Check-In', href: '/presensi', icon: Camera, isVisible: can('read', 'presensi') },
     { name: 'Jadwal Ngajar', href: '/jadwal', icon: CalendarDays, isVisible: can('read', 'jadwal') },
     { name: 'Data Guru / Pengajar', href: '/data-guru', icon: UserCheck, isVisible: can('read', 'guru') },
@@ -98,6 +105,7 @@ export const Sidebar: React.FC = () => {
                 <Link
                   key={item.name}
                   href={item.href}
+                  onClick={() => closeSidebar()}
                   title={isSidebarCollapsed ? item.name : undefined}
                   className={`flex items-center gap-3 p-3 rounded-xl text-xs font-semibold transition-all duration-150 ${
                     isActive
@@ -105,8 +113,24 @@ export const Sidebar: React.FC = () => {
                       : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   } ${isSidebarCollapsed ? 'justify-center' : ''}`}
                 >
-                  <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-amber-300' : 'text-slate-400'}`} />
-                  {!isSidebarCollapsed && <span>{item.name}</span>}
+                  <div className="relative shrink-0">
+                    <Icon className={`w-5 h-5 ${isActive ? 'text-amber-300' : 'text-slate-400'}`} />
+                    {isSidebarCollapsed && typeof item.badge === 'number' && item.badge > 0 && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full ring-2 ring-white" />
+                    )}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <div className="flex items-center justify-between flex-1 min-w-0">
+                      <span className="truncate">{item.name}</span>
+                      {typeof item.badge === 'number' && item.badge > 0 && (
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                          isActive ? 'bg-amber-300 text-emerald-950' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </Link>
               );
             })}

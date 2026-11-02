@@ -17,6 +17,9 @@ export async function checkServerPermission(roleId: string, requiredPermission: 
     return Boolean(data);
   } catch {
     // Default fallback permission checks for demo mode
+    if (roleId === '55555555-5555-5555-5555-000000000005' || roleId === 'senior-teacher') {
+      return ['dashboard:read', 'presensi:read', 'presensi:create', 'presensi:approve', 'jadwal:read', 'jadwal:create', 'guru:read', 'siswa:read', 'siswa:create', 'siswa:update', 'wali:read'].includes(requiredPermission);
+    }
     if (roleId === '22222222-2222-2222-2222-000000000002' || roleId === 'teacher') {
       return ['dashboard:read', 'presensi:read', 'presensi:create', 'jadwal:read', 'guru:read', 'siswa:read', 'siswa:create', 'siswa:update', 'wali:read'].includes(requiredPermission);
     }

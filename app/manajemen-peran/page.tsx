@@ -42,6 +42,7 @@ export const PERMISSION_GROUPS = [
       { key: 'presensi:read', label: 'Melihat Lembar Presensi (Read)' },
       { key: 'presensi:create', label: 'Check-In Presensi (Create)' },
       { key: 'presensi:update', label: 'Mengedit Status Presensi (Update)' },
+      { key: 'presensi:approve', label: 'Approval & Validasi Evaluasi (Approve)' },
       { key: 'presensi:delete', label: 'Menghapus Data Presensi (Delete)' }
     ]
   },
@@ -122,6 +123,16 @@ export default function ManajemenPeranPage() {
   const [newRoleDesc, setNewRoleDesc] = useState('');
   const [newRolePerms, setNewRolePerms] = useState<string[]>(['guru:read', 'siswa:read']);
 
+  // Form State for editing role details
+  const [editRoleName, setEditRoleName] = useState('');
+  const [editRoleDesc, setEditRoleDesc] = useState('');
+
+  const handleOpenEditRole = (role: RoleItem) => {
+    setEditingRole({ ...role, permissions: [...role.permissions] });
+    setEditRoleName(role.name);
+    setEditRoleDesc(role.description || '');
+  };
+
   const handleCreateRole = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRoleName.trim()) return;
@@ -198,12 +209,15 @@ export default function ManajemenPeranPage() {
     setEditingRole({ ...editingRole, permissions: updatedPerms });
   };
 
-  // Batch Save Handler: Only sends network request when clicking "Simpan Ability"
+  // Batch Save Handler: Saves role name, description, and permissions together
   const handleSaveAbilities = async () => {
     if (!editingRole) return;
+    if (!editRoleName.trim()) return;
 
     await updatePermissionsMutation.mutateAsync({
       roleId: editingRole.id,
+      name: editRoleName.trim(),
+      description: editRoleDesc.trim(),
       permissions: editingRole.permissions
     });
 
@@ -252,16 +266,16 @@ export default function ManajemenPeranPage() {
       },
       {
         id: 'actions',
-        header: () => <div className="text-right">Aksi & Atur Ability</div>,
+        header: () => <div className="text-right">Aksi & Edit Peran</div>,
         cell: (info) => (
           <div className="flex items-center justify-end gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setEditingRole(info.row.original)}
+              onClick={() => handleOpenEditRole(info.row.original)}
               className="text-xs font-semibold"
             >
-              <Edit3 className="w-3.5 h-3.5 mr-1" /> Atur Ability (Tree)
+              <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit Peran & Ability
             </Button>
 
             {info.row.original.id !== '11111111-1111-1111-1111-000000000001' && (
@@ -486,19 +500,48 @@ export default function ManajemenPeranPage() {
         </div>
       </Modal>
 
-      {/* 2. REUSABLE MODAL: EDIT ABILITY TERPASANG */}
+      {/* 2. REUSABLE MODAL: EDIT PERAN & ABILITY */}
       <Modal
         isOpen={!!editingRole}
         onClose={() => setEditingRole(null)}
-        title={editingRole ? `Edit Ability Terpasang — ${editingRole.name}` : 'Edit Ability'}
+        title={editingRole ? `Edit Peran & Ability — ${editingRole.name}` : 'Edit Peran'}
         icon={ShieldCheck}
         maxWidth="2xl"
       >
         {editingRole && (
           <div className="space-y-4">
-            <p className="text-xs text-slate-500 font-medium">
-              Centang modul ability yang diinginkan, lalu klik <strong>Simpan Ability Peran</strong> di bawah.
-            </p>
+            {/* ROLE NAME & DESCRIPTION INPUTS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50/80 rounded-2xl border border-slate-200">
+              <div>
+                <Label required className="text-xs font-bold text-slate-700 mb-1">Nama Peran (Role):</Label>
+                <Input
+                  required
+                  value={editRoleName}
+                  onChange={(e) => setEditRoleName(e.target.value)}
+                  disabled={editingRole.id === '11111111-1111-1111-1111-000000000001'}
+                  placeholder="Misal: Guru Senior / Koordinator"
+                />
+                {editingRole.id === '11111111-1111-1111-1111-000000000001' && (
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Role Pemilik Utama dilindungi sistem.</span>
+                )}
+              </div>
+              <div>
+                <Label className="text-xs font-bold text-slate-700 mb-1">Deskripsi Peran:</Label>
+                <Input
+                  value={editRoleDesc}
+                  onChange={(e) => setEditRoleDesc(e.target.value)}
+                  disabled={editingRole.id === '11111111-1111-1111-1111-000000000001'}
+                  placeholder="Deskripsi tugas dan hak akses..."
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-xs font-bold text-slate-600">Hak Akses (Ability) Terpasang:</span>
+              <span className="text-[11px] text-slate-500 font-medium">
+                {editingRole.permissions.length} dari {allPermKeys.length} ability aktif
+              </span>
+            </div>
 
             <div className="max-h-[50vh] overflow-y-auto pr-1 space-y-3">
               {PERMISSION_GROUPS.map((group) => {
@@ -575,7 +618,7 @@ export default function ManajemenPeranPage() {
               >
                 <Save className="w-3.5 h-3.5 mr-1 text-amber-300" />
                 <span>
-                  {updatePermissionsMutation.isPending ? 'Menyimpan Ability...' : 'Simpan Ability Peran'}
+                  {updatePermissionsMutation.isPending ? 'Menyimpan Perubahan...' : 'Simpan Perubahan Peran'}
                 </span>
               </Button>
             </div>
