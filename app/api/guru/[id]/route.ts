@@ -17,7 +17,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, email, phone, session_rate, photo_url, avatar_url, subjects, status, reset_password, supervisor_id } = body;
+    const { name, email, phone, session_rate, photo_url, avatar_url, subjects, status, reset_password, new_password, supervisor_id } = body;
 
     const targetPhoto = photo_url || avatar_url;
 
@@ -38,13 +38,13 @@ export async function PUT(
       );
 
       // 1. Reset Password Action (RPC + Admin Auth Sync)
-      if (reset_password && teacherEmail) {
-        const newRandomPassword = `Gru${Math.random().toString(36).slice(-6)}!`;
+      if ((reset_password || new_password) && teacherEmail) {
+        const targetPassword = new_password || `Gru${Math.random().toString(36).slice(-6)}!`;
 
         // A. Primary RPC reset_user_password (pgcrypto + auto-confirm email)
         const { error: rpcErr } = await supabase.rpc('reset_user_password', {
           target_email: teacherEmail,
-          new_password: newRandomPassword
+          new_password: targetPassword
         });
 
         if (rpcErr) {
@@ -60,7 +60,7 @@ export async function PUT(
 
           if (targetAuthUser) {
             await supabaseAuthAdmin.auth.admin.updateUserById(targetAuthUser.id, {
-              password: newRandomPassword,
+              password: targetPassword,
               email_confirm: true
             });
           }
@@ -70,7 +70,7 @@ export async function PUT(
 
         return NextResponse.json({
           success: true,
-          new_password: newRandomPassword,
+          new_password: targetPassword,
           email: teacherEmail,
           name: teacherData?.name,
           message: `Password guru berhasil di-reset!`
