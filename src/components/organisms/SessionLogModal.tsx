@@ -40,7 +40,7 @@ export const SessionLogModal: React.FC<SessionLogModalProps> = ({ onSubmitLog })
       student_name: pendingCheckoutData?.student_name || 'Ananda Bintang Pratama',
       activities,
       results_recommendations: recommendations,
-      session_fee: 85000,
+      session_fee: 20000,
       verified: false
     };
 

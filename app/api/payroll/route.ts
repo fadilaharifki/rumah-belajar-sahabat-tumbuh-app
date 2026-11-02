@@ -59,7 +59,7 @@ export async function GET(request: Request) {
         teacher_photo: t.photo_url || '',
         period_month: p.period_month,
         total_sessions: p.total_sessions,
-        rate_per_session: p.rate_per_session || t.session_rate || 85000,
+        rate_per_session: p.rate_per_session || t.session_rate || 20000,
         total_amount: p.total_amount,
         status: p.status || 'Draft',
         paid_at: p.paid_at || p.created_at
@@ -93,9 +93,9 @@ export async function POST(request: Request) {
         .eq('id', teacher_id)
         .maybeSingle();
 
-      const rate = Number(rate_per_session) || teacher?.session_rate || 85000;
+      const rate = Number(rate_per_session) || teacher?.session_rate || 20000;
       const sessions = Number(total_sessions) || 0;
-      const amount = Number(total_amount) || (sessions * rate);
+      const amount = sessions * rate;
       const targetStatus = status || 'Draft';
 
       // 2. Perform direct table upsert without embedding joins

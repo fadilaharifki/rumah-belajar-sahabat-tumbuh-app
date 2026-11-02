@@ -75,7 +75,7 @@ export default function DashboardPage() {
   // Sum actual payroll: Teacher sees personal earnings, Admin sees total institution earnings
   const totalPayrollReal = useMemo(() => {
     if (isTeacher && loggedInTeacher) {
-      const rate = loggedInTeacher.session_rate || 85000;
+      const rate = loggedInTeacher.session_rate || 20000;
       return totalSessionsMonth * rate;
     }
 
@@ -86,7 +86,7 @@ export default function DashboardPage() {
           p.date?.startsWith(currentMonth) &&
           (p.status === 'Valid' || p.status === 'ManualVerified')
       );
-      const rate = teacher.session_rate || 85000;
+      const rate = teacher.session_rate || 20000;
       return acc + (validSessions.length * rate);
     }, 0);
   }, [teachers, presensiList, currentMonth, isTeacher, loggedInTeacher, totalSessionsMonth]);
@@ -299,7 +299,7 @@ export default function DashboardPage() {
               </div>
               <p className="text-xs text-emerald-800 font-medium">
                 {isTeacher
-                  ? `Dihitung dari ${totalSessionsMonth} sesi mengajar terverifikasi milik Anda x tarif honor per sesi (${formatRupiah(loggedInTeacher?.session_rate || 85000)}).`
+                  ? `Dihitung dari ${totalSessionsMonth} sesi mengajar terverifikasi milik Anda x tarif honor per sesi (${formatRupiah(loggedInTeacher?.session_rate || 20000)}).`
                   : `Dihitung dari total akumulasi presensi sesi mengajar terverifikasi di database (${totalSessionsMonth} sesi) x tarif honor masing-masing guru.`}
               </p>
             </div>
