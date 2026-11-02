@@ -27,17 +27,26 @@ export async function GET(request: Request) {
     const userRole = searchParams.get('role'); // 'admin' | 'teacher' | 'staff'
 
     // 1. Resolve user profile and multi-identity mappings (auth_user_id vs public.users.id)
+    const isUuid = (val: any) =>
+      typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
     let userRecord: any = null;
     if (currentUserId) {
-      const orFilter = currentUserId.includes('@')
-        ? `email.eq.${currentUserId}`
-        : `id.eq.${currentUserId},auth_user_id.eq.${currentUserId}`;
-      const { data: matchedUser } = await supabase
-        .from('users')
-        .select('id, auth_user_id, email, full_name, category, role_id')
-        .or(orFilter)
-        .maybeSingle();
-      userRecord = matchedUser;
+      if (currentUserId.includes('@')) {
+        const { data: matchedUser } = await supabase
+          .from('users')
+          .select('id, auth_user_id, email, full_name, category, role_id')
+          .eq('email', currentUserId)
+          .maybeSingle();
+        userRecord = matchedUser;
+      } else if (isUuid(currentUserId)) {
+        const { data: matchedUser } = await supabase
+          .from('users')
+          .select('id, auth_user_id, email, full_name, category, role_id')
+          .or(`id.eq.${currentUserId},auth_user_id.eq.${currentUserId}`)
+          .maybeSingle();
+        userRecord = matchedUser;
+      }
     }
 
     const isOwner =
@@ -225,7 +234,7 @@ export async function GET(request: Request) {
             name: teacher?.name || 'Guru Pengajar',
             photo_url: teacher?.photo_url || '',
             phone: teacher?.phone || '',
-            session_rate: teacher?.session_rate || 85000,
+            session_rate: teacher?.session_rate || 20000,
             supervisor_id: teacher?.supervisor_id || null,
             supervisor_name: supervisorName
           },
@@ -279,7 +288,7 @@ export async function GET(request: Request) {
             name: teacher?.name || 'Guru Pengajar',
             photo_url: teacher?.photo_url || '',
             phone: teacher?.phone || '',
-            session_rate: teacher?.session_rate || log.session_fee || 85000,
+            session_rate: teacher?.session_rate || log.session_fee || 20000,
             supervisor_id: teacher?.supervisor_id || null,
             supervisor_name: supervisorName
           },

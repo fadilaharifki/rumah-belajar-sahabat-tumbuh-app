@@ -128,6 +128,8 @@ export function useExecuteApprovalMutation() {
       queryClient.invalidateQueries({ queryKey: ['approval-list'] });
       queryClient.invalidateQueries({ queryKey: ['presensi'] });
       queryClient.invalidateQueries({ queryKey: ['payroll'] });
+      queryClient.invalidateQueries({ queryKey: ['guru-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['guru'] });
 
       if (variables.action === 'Valid') {
         toast.success('Laporan evaluasi berhasil disetujui (Valid)! Sesi masuk ke perhitungan honor.');

@@ -49,7 +49,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
     onKeyDown?.(e);
   };
 
-  // Helper to format raw numeric string as Indonesian currency (e.g. 85000 -> "Rp 85.000")
+  // Helper to format raw numeric string as Indonesian currency (e.g. 20000 -> "Rp 85.000")
   const formatCurrency = (val: string | number | readonly string[] | undefined): string => {
     if (val === undefined || val === null || val === '') return '';
     const numericStr = String(val).replace(/\D/g, '');

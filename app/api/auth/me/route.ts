@@ -98,7 +98,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       user: {
-        id: dbUser?.auth_user_id || dbUser?.id || `usr-${Date.now()}`,
+        id: dbUser?.auth_user_id || dbUser?.id || crypto.randomUUID(),
         full_name: fullName,
         email: supaEmail || 'pemilik@sahabattumbuh.id',
         role: roleStr,

@@ -99,7 +99,7 @@ export default function DataGuruPage() {
   const [tName, setTName] = useState('');
   const [tEmail, setTEmail] = useState('');
   const [tPhone, setTPhone] = useState('');
-  const [tRate, setTRate] = useState(85000);
+  const [tRate, setTRate] = useState(20000);
   const [tPhoto, setTPhoto] = useState('');
   const [tSubjects, setTSubjects] = useState('Matematika, IPA');
   const [tSupervisorId, setTSupervisorId] = useState('');
@@ -108,7 +108,7 @@ export default function DataGuruPage() {
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
-  const [editRate, setEditRate] = useState(85000);
+  const [editRate, setEditRate] = useState(20000);
   const [editPhoto, setEditPhoto] = useState('');
   const [editSubjects, setEditSubjects] = useState('');
   const [editSupervisorId, setEditSupervisorId] = useState('');
@@ -162,7 +162,7 @@ export default function DataGuruPage() {
     setTName('');
     setTEmail('');
     setTPhone('');
-    setTRate(85000);
+    setTRate(20000);
     setTPhoto('');
     setTSubjects('Matematika, IPA');
     setTSupervisorId('');
@@ -207,7 +207,7 @@ export default function DataGuruPage() {
     setEditName(guru.name);
     setEditEmail(guru.email);
     setEditPhone(guru.phone);
-    setEditRate(guru.session_rate || 85000);
+    setEditRate(guru.session_rate || 20000);
     setEditPhoto(guru.photo_url || guru.avatar_url || '');
     setEditSubjects(Array.isArray(guru.subjects) ? guru.subjects.join(', ') : 'Umum, Pendampingan');
     setEditSupervisorId(guru.supervisor_id || '');
@@ -353,7 +353,7 @@ export default function DataGuruPage() {
         ),
         cell: (info) => (
           <span className="font-bold text-emerald-800 font-mono">
-            Rp {(info.getValue() as number || 85000).toLocaleString('id-ID')}
+            Rp {(info.getValue() as number || 20000).toLocaleString('id-ID')}
           </span>
         )
       },
@@ -451,8 +451,8 @@ export default function DataGuruPage() {
     );
     return cols;
   },
-  [router, deleteGuruMutation, can, isBulkMode, selectedIds, teachers]
-);
+    [router, deleteGuruMutation, can, isBulkMode, selectedIds, teachers]
+  );
 
   const table = useReactTable({
     data: teachers,
@@ -516,11 +516,10 @@ export default function DataGuruPage() {
                       setIsBulkMode(true);
                     }
                   }}
-                  className={`w-full shadow-xs text-xs font-bold h-9 px-3 rounded-xl shrink-0 ${
-                    isBulkMode
+                  className={`w-full shadow-xs text-xs font-bold h-9 px-3 rounded-xl shrink-0 ${isBulkMode
                       ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
                       : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   <CheckSquare className="w-3.5 h-3.5 mr-1" />
                   {isBulkMode ? 'Tutup Mode Massal' : 'Pilih Massal'}
@@ -840,19 +839,18 @@ export default function DataGuruPage() {
               <tbody className="divide-y divide-slate-100 text-xs font-medium">
                 {table.getRowModel().rows.length > 0 ? (
                   table.getRowModel().rows.map((row) => (
-                      <tr
-                        key={row.id}
-                        onClick={() => {
-                          if (isBulkMode) {
-                            toggleSelectOne(row.original.id);
-                          } else {
-                            router.push(`/data-guru/${row.original.id}`);
-                          }
-                        }}
-                        className={`hover:bg-emerald-50/40 cursor-pointer transition group ${
-                          selectedIds.includes(row.original.id) ? 'bg-emerald-50/60' : ''
+                    <tr
+                      key={row.id}
+                      onClick={() => {
+                        if (isBulkMode) {
+                          toggleSelectOne(row.original.id);
+                        } else {
+                          router.push(`/data-guru/${row.original.id}`);
+                        }
+                      }}
+                      className={`hover:bg-emerald-50/40 cursor-pointer transition group ${selectedIds.includes(row.original.id) ? 'bg-emerald-50/60' : ''
                         }`}
-                      >
+                    >
                       {row.getVisibleCells().map((cell) => (
                         <td key={cell.id} className="px-3.5 py-2.5 align-middle">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}

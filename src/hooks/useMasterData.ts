@@ -62,7 +62,7 @@ export const useMasterData = () => {
       name: newTeacher.name || '',
       email: newTeacher.email || '',
       phone: newTeacher.phone || '',
-      session_rate: newTeacher.session_rate || 85000,
+      session_rate: newTeacher.session_rate || 20000,
       photo_url: newTeacher.photo_url,
       status: 'active'
     };

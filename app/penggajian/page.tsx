@@ -44,9 +44,14 @@ export default function PenggajianPage() {
 
   const teacherPayroll = teacherDetail?.payroll;
   const teacherAttendance = teacherDetail?.attendance || [];
-  const teacherSessionRate = loggedInTeacher?.session_rate || 85000;
-  const teacherTotalSessions = teacherAttendance.length;
-  const teacherTotalPayroll = teacherPayroll?.total_amount || teacherTotalSessions * teacherSessionRate;
+  const teacherSessionRate = loggedInTeacher?.session_rate || 20000;
+  const validTeacherAttendance = useMemo(() => {
+    return teacherAttendance.filter(
+      (a: any) => a.status === 'Valid' || a.status === 'ManualVerified'
+    );
+  }, [teacherAttendance]);
+  const teacherTotalSessions = validTeacherAttendance.length;
+  const teacherTotalPayroll = teacherTotalSessions * teacherSessionRate;
   const teacherPayrollStatus = teacherPayroll?.status || 'Draft';
 
   // Role-Based Scoping Filter for Admin view
@@ -60,7 +65,7 @@ export default function PenggajianPage() {
       );
 
       const totalSessions = validSessions.length;
-      const rate = teacher.session_rate || 85000;
+      const rate = teacher.session_rate || 20000;
       const totalPay = totalSessions * rate;
 
       return {
@@ -144,13 +149,12 @@ export default function PenggajianPage() {
 
             <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto pt-2.5 sm:pt-0 border-t sm:border-t-0 border-slate-100">
               <span className="text-xs font-semibold text-slate-500">Status Pencairan DB:</span>
-              <span className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full font-extrabold text-xs border ${
-                teacherPayrollStatus === 'Lunas'
+              <span className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full font-extrabold text-xs border ${teacherPayrollStatus === 'Lunas'
                   ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
                   : teacherPayrollStatus === 'Pending'
-                  ? 'bg-amber-100 text-amber-950 border-amber-300'
-                  : 'bg-slate-100 text-slate-800 border-slate-300'
-              }`}>
+                    ? 'bg-amber-100 text-amber-950 border-amber-300'
+                    : 'bg-slate-100 text-slate-800 border-slate-300'
+                }`}>
                 {teacherPayrollStatus === 'Lunas' ? (
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 ) : (
@@ -219,22 +223,34 @@ export default function PenggajianPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {teacherAttendance.length > 0 ? (
-                    teacherAttendance.map((att: any, idx: number) => (
-                      <tr key={att.id || idx} className="hover:bg-amber-50/20 transition">
-                        <td className="px-4 sm:px-5 py-3.5 font-mono text-slate-400">#S-{idx + 101}</td>
-                        <td className="px-4 sm:px-5 py-3.5 font-mono font-bold text-slate-800 whitespace-nowrap">{att.date}</td>
-                        <td className="px-4 sm:px-5 py-3.5 font-bold text-slate-900 whitespace-nowrap">{att.student_name}</td>
-                        <td className="px-4 sm:px-5 py-3.5 font-mono text-emerald-800">
-                          {att.check_in} - {att.check_out || '15:00'}
-                        </td>
-                        <td className="px-4 sm:px-5 py-3.5 text-center font-mono font-bold text-slate-800">
-                          {att.duration_minutes || 60}m
-                        </td>
-                        <td className="px-4 sm:px-5 py-3.5 text-right font-mono font-bold text-emerald-800">
-                          {formatRupiah(teacherSessionRate)}
-                        </td>
-                      </tr>
-                    ))
+                    teacherAttendance.map((att: any, idx: number) => {
+                      const isApproved = att.status === 'Valid' || att.status === 'ManualVerified';
+                      return (
+                        <tr key={att.id || idx} className={`transition ${isApproved ? 'hover:bg-amber-50/20' : 'bg-slate-50/40 text-slate-400'}`}>
+                          <td className="px-4 sm:px-5 py-3.5 font-mono text-slate-400">#S-{idx + 101}</td>
+                          <td className="px-4 sm:px-5 py-3.5 font-mono font-bold text-slate-800 whitespace-nowrap">{att.date}</td>
+                          <td className="px-4 sm:px-5 py-3.5 font-bold text-slate-900 whitespace-nowrap">{att.student_name}</td>
+                          <td className="px-4 sm:px-5 py-3.5 font-mono text-slate-700">
+                            {att.check_in} - {att.check_out || '15:00'}
+                          </td>
+                          <td className="px-4 sm:px-5 py-3.5 text-center font-mono font-bold text-slate-800">
+                            {att.duration_minutes || 60}m
+                          </td>
+                          <td className="px-4 sm:px-5 py-3.5 text-right font-mono font-bold">
+                            {isApproved ? (
+                              <span className="text-emerald-800">{formatRupiah(teacherSessionRate)}</span>
+                            ) : (
+                              <div className="text-right">
+                                <span className="text-slate-400 text-xs font-mono line-through block">Rp 0</span>
+                                <span className="text-[10px] text-amber-700 font-semibold">
+                                  {att.status === 'Invalid' ? 'Ditolak' : att.status === 'NeedRevision' ? 'Perlu Revisi' : 'Menunggu ACC'}
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td colSpan={6} className="text-center py-12 text-slate-400">
@@ -307,7 +323,7 @@ export default function PenggajianPage() {
             Rata-rata Tarif Per Sesi
           </span>
           <div className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">
-            {formatRupiah(payrollData[0]?.session_rate || 85000)}
+            {formatRupiah(payrollData[0]?.session_rate || 20000)}
           </div>
         </Card>
       </div>

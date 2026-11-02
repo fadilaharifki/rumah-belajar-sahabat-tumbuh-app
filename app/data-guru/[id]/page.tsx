@@ -107,8 +107,8 @@ export default function DetailGuruPage() {
   const sessionRate = teacher?.session_rate || 85000;
   const validAttendance = attendanceList.filter((a: any) => a.status === 'Valid' || a.status === 'ManualVerified');
   const totalSessions = validAttendance.length;
-  const totalPayroll = payroll?.total_amount || totalSessions * sessionRate;
-  const payrollStatus = payroll?.status || 'Lunas';
+  const totalPayroll = totalSessions * sessionRate;
+  const payrollStatus = payroll?.status || 'Draft';
 
   const handleAddJadwalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

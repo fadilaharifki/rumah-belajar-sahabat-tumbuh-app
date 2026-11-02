@@ -146,8 +146,12 @@ export async function GET(
     }
 
     // 4. Fetch OR Auto-Sync Payroll record in DB table public.payrolls (Default status: 'Draft')
-    const sessionRate = teacher.session_rate || 85000;
-    const totalSessions = monthAttendance.length;
+    // CRITICAL: Sesi honorarium hanya dihitung jika statusnya sudah disetujui (Valid atau ManualVerified)!
+    const validMonthAttendance = monthAttendance.filter(
+      (att: any) => att.status === 'Valid' || att.status === 'ManualVerified'
+    );
+    const sessionRate = teacher.session_rate || 20000;
+    const totalSessions = validMonthAttendance.length;
     const totalAmount = totalSessions * sessionRate;
 
     let { data: payrollData } = await supabase
@@ -157,8 +161,9 @@ export async function GET(
       .eq('period_month', month)
       .maybeSingle();
 
-    // Auto-upsert into DB table if attendance exists so DB table public.payrolls gets populated!
-    if (totalSessions > 0) {
+    // Auto-upsert into DB table if attendance records exist or payroll already exists
+    // so public.payrolls in Supabase always reflects ONLY valid approved sessions
+    if (monthAttendance.length > 0 || payrollData) {
       try {
         const { data: synced } = await supabase
           .from('payrolls')
@@ -186,7 +191,7 @@ export async function GET(
       period_month: month,
       total_sessions: totalSessions,
       rate_per_session: sessionRate,
-      total_amount: payrollData?.total_amount || totalAmount,
+      total_amount: totalAmount,
       status: payrollData?.status || 'Draft'
     };
 

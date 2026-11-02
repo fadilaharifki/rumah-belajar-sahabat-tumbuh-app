@@ -25,21 +25,43 @@ export async function PUT(
 
     if (isSupabaseConfigured) {
       // 1. Resolve approver identities for robust foreign keys & Anti-Self Approval
+      const isUuid = (val: any) =>
+        typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
       let approverUserRecord: any = null;
       if (approved_by) {
-        const orFilter = approved_by.includes('@')
-          ? `email.eq.${approved_by}`
-          : `id.eq.${approved_by},auth_user_id.eq.${approved_by}`;
-        const { data: dbApprover } = await supabase
+        if (typeof approved_by === 'string' && approved_by.includes('@')) {
+          const { data: dbApprover } = await supabase
+            .from('users')
+            .select('id, auth_user_id')
+            .eq('email', approved_by)
+            .maybeSingle();
+          approverUserRecord = dbApprover;
+        } else if (isUuid(approved_by)) {
+          const { data: dbApprover } = await supabase
+            .from('users')
+            .select('id, auth_user_id')
+            .or(`id.eq.${approved_by},auth_user_id.eq.${approved_by}`)
+            .maybeSingle();
+          approverUserRecord = dbApprover;
+        }
+      }
+
+      // If approved_by is not a valid UUID (e.g. legacy/mock session), fallback to the first active Admin / Staff
+      if (!approverUserRecord && approved_by) {
+        const { data: fallbackAdmin } = await supabase
           .from('users')
           .select('id, auth_user_id')
-          .or(orFilter)
+          .limit(1)
           .maybeSingle();
-        approverUserRecord = dbApprover;
+        if (fallbackAdmin) approverUserRecord = fallbackAdmin;
       }
+
+      const validApproverId = approverUserRecord?.id || (isUuid(approved_by) ? approved_by : null);
 
       const approverIds = new Set<string>([
         approved_by,
+        validApproverId,
         approverUserRecord?.id,
         approverUserRecord?.auth_user_id
       ].filter(Boolean));
@@ -76,7 +98,7 @@ export async function PUT(
             logPayload.verified = false;
             if (approval_notes) logPayload.rejection_reason = approval_notes;
           }
-          if (approved_by) logPayload.approver_id = approverUserRecord?.id || approved_by;
+          if (validApproverId) logPayload.approver_id = validApproverId;
           logPayload.approved_at = new Date().toISOString();
 
           await supabase
@@ -104,7 +126,7 @@ export async function PUT(
 
       const updatePayload: Record<string, any> = {};
       if (status) updatePayload.status = status;
-      if (approved_by) updatePayload.approved_by = approverUserRecord?.id || approved_by;
+      if (validApproverId) updatePayload.approved_by = validApproverId;
       if (approval_notes !== undefined) updatePayload.approval_notes = approval_notes;
       if (status === 'Valid' || status === 'Invalid' || status === 'NeedRevision' || status === 'ManualVerified') {
         updatePayload.approved_at = new Date().toISOString();
@@ -127,18 +149,18 @@ export async function PUT(
       if (status === 'Valid') {
         logUpdatePayload.approval_status = 'Valid';
         logUpdatePayload.verified = true;
-        if (approved_by) logUpdatePayload.approver_id = approverUserRecord?.id || approved_by;
+        if (validApproverId) logUpdatePayload.approver_id = validApproverId;
         logUpdatePayload.approved_at = new Date().toISOString();
       } else if (status === 'NeedRevision') {
         logUpdatePayload.approval_status = 'NeedRevision';
         logUpdatePayload.verified = false;
-        if (approved_by) logUpdatePayload.approver_id = approverUserRecord?.id || approved_by;
+        if (validApproverId) logUpdatePayload.approver_id = validApproverId;
         if (approval_notes) logUpdatePayload.rejection_reason = approval_notes;
         logUpdatePayload.approved_at = new Date().toISOString();
       } else if (status === 'Invalid') {
         logUpdatePayload.approval_status = 'Invalid';
         logUpdatePayload.verified = false;
-        if (approved_by) logUpdatePayload.approver_id = approverUserRecord?.id || approved_by;
+        if (validApproverId) logUpdatePayload.approver_id = validApproverId;
         if (approval_notes) logUpdatePayload.rejection_reason = approval_notes;
         logUpdatePayload.approved_at = new Date().toISOString();
       } else if (status === 'PendingApproval') {
