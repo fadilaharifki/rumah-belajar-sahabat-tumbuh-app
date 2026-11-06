@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useRoleStore } from '@/stores/useRoleStore';
 
-export type CRUDAction = 'create' | 'read' | 'update' | 'delete' | 'export' | 'manage' | 'approve';
+export type CRUDAction = 'create' | 'read' | 'update' | 'delete' | 'export' | 'manage' | 'approve' | 'bypass_schedule';
 export type Resource = 'dashboard' | 'presensi' | 'jadwal' | 'guru' | 'siswa' | 'wali' | 'staff' | 'penggajian' | 'roles';
 
 export const useAbility = () => {

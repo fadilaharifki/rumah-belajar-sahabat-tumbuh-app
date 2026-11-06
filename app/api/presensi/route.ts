@@ -149,7 +149,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { teacher_id, student_id, schedule_id, date, check_in } = body;
+    const { teacher_id, student_id, schedule_id, date, check_in, bypass_schedule } = body;
 
     if (!teacher_id || !student_id) {
       return NextResponse.json(
@@ -169,56 +169,58 @@ export async function POST(request: Request) {
     const dayOfWeek = DAYS_OF_WEEK_ID[dateUtcNoon.getUTCDay()];
 
     if (isSupabaseConfigured) {
-      // 1. Validasi Jadwal Siswa (Harus memiliki jadwal aktif di hari ini dan bersama guru ini)
+      // 1. Validasi Jadwal Siswa (Harus memiliki jadwal aktif di hari ini dan bersama guru ini, kecuali ada flag bypass_schedule)
       const { data: studentSchedules, error: schError } = await supabase
         .from('schedules')
         .select('id, teacher_id, student_id, day_of_week, start_time, end_time, room, status, teachers(name), students(name)')
         .eq('student_id', student_id);
 
       const activeSchedules = (studentSchedules || []).filter((s: any) => s.status !== 'Nonaktif');
-
-      // Cek apakah siswa memiliki jadwal bimbingan di sistem
-      if (activeSchedules.length === 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Tidak dapat Check-In! Siswa belum memiliki jadwal bimbingan aktif di sistem. Silakan atur jadwal di menu Jadwal Ngajar terlebih dahulu.'
-          },
-          { status: 400 }
-        );
-      }
-
-      // Cek apakah siswa memiliki jadwal pada hari ini (dayOfWeek)
       const todaySchedules = activeSchedules.filter((s: any) => s.day_of_week === dayOfWeek);
-      if (todaySchedules.length === 0) {
-        const availableDays = Array.from(
-          new Set(activeSchedules.map((s: any) => `${s.day_of_week} (${(s.start_time || '').slice(0, 5)} - ${(s.end_time || '').slice(0, 5)})`))
-        ).join(', ');
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Tidak dapat Check-In! Siswa tidak memiliki jadwal bimbingan pada hari ${dayOfWeek}. Jadwal belajar siswa: ${availableDays}.`
-          },
-          { status: 400 }
-        );
-      }
-
-      // Cek apakah guru yang check-in sesuai dengan guru yang terdaftar di jadwal siswa hari ini
       const matchingSchedule = todaySchedules.find((s: any) => s.teacher_id === teacher_id);
-      if (!matchingSchedule) {
-        const scheduledInfo = todaySchedules
-          .map((s: any) => `${s.teachers?.name || 'Guru lain'} (${(s.start_time || '').slice(0, 5)} - ${(s.end_time || '').slice(0, 5)})`)
-          .join(', ');
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Tidak dapat Check-In! Pada hari ${dayOfWeek}, siswa dijadwalkan belajar bersama ${scheduledInfo}, bukan guru yang dipilih.`
-          },
-          { status: 400 }
-        );
+
+      if (!bypass_schedule) {
+        // Cek apakah siswa memiliki jadwal bimbingan di sistem
+        if (activeSchedules.length === 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Tidak dapat Check-In! Siswa belum memiliki jadwal bimbingan aktif di sistem. Silakan atur jadwal di menu Jadwal Ngajar terlebih dahulu.'
+            },
+            { status: 400 }
+          );
+        }
+
+        // Cek apakah siswa memiliki jadwal pada hari ini (dayOfWeek)
+        if (todaySchedules.length === 0) {
+          const availableDays = Array.from(
+            new Set(activeSchedules.map((s: any) => `${s.day_of_week} (${(s.start_time || '').slice(0, 5)} - ${(s.end_time || '').slice(0, 5)})`))
+          ).join(', ');
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Tidak dapat Check-In! Siswa tidak memiliki jadwal bimbingan pada hari ${dayOfWeek}. Jadwal belajar siswa: ${availableDays}.`
+            },
+            { status: 400 }
+          );
+        }
+
+        // Cek apakah guru yang check-in sesuai dengan guru yang terdaftar di jadwal siswa hari ini
+        if (!matchingSchedule) {
+          const scheduledInfo = todaySchedules
+            .map((s: any) => `${s.teachers?.name || 'Guru lain'} (${(s.start_time || '').slice(0, 5)} - ${(s.end_time || '').slice(0, 5)})`)
+            .join(', ');
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Tidak dapat Check-In! Pada hari ${dayOfWeek}, siswa dijadwalkan belajar bersama ${scheduledInfo}, bukan guru yang dipilih.`
+            },
+            { status: 400 }
+          );
+        }
       }
 
-      const resolvedScheduleId = schedule_id || matchingSchedule.id;
+      const resolvedScheduleId = schedule_id || matchingSchedule?.id || null;
 
       // Check if attendance record already exists for this teacher, student, schedule & date
       let existingQuery = supabase

@@ -21,9 +21,19 @@ export const useLoginMutation = () => {
         body: JSON.stringify({ email, password })
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Gagal masuk ke aplikasi!');
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(
+          res.ok
+            ? 'Respon server tidak valid (bukan JSON).'
+            : `Server gagal merespon (${res.status}). Pastikan backend/dev server sudah siap.`
+        );
+      }
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || 'Gagal masuk ke aplikasi!');
       }
 
       return data.user as UserProfile;
@@ -50,7 +60,11 @@ export const useLogoutMutation = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-      return res.json();
+      try {
+        return await res.json();
+      } catch {
+        return { success: res.ok };
+      }
     },
     onSuccess: () => {
       setAuthUser(null);
