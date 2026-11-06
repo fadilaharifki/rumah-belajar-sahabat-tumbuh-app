@@ -43,7 +43,8 @@ export const PERMISSION_GROUPS = [
       { key: 'presensi:create', label: 'Check-In Presensi (Create)' },
       { key: 'presensi:update', label: 'Mengedit Status Presensi (Update)' },
       { key: 'presensi:approve', label: 'Approval & Validasi Evaluasi (Approve)' },
-      { key: 'presensi:delete', label: 'Menghapus Data Presensi (Delete)' }
+      { key: 'presensi:delete', label: 'Menghapus Data Presensi (Delete)' },
+      { key: 'presensi:bypass_schedule', label: 'Bypass Jadwal & Bebas Waktu Check-In (Bypass)' }
     ]
   },
   {

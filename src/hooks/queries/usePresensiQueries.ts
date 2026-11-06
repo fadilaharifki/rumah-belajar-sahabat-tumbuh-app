@@ -85,9 +85,10 @@ export function useCheckInMutation() {
     mutationFn: async (payload: {
       teacher_id: string;
       student_id: string;
-      schedule_id?: string;
+      schedule_id?: string | null;
       date?: string;
       check_in?: string;
+      bypass_schedule?: boolean;
     }) => {
       const res = await fetch('/api/presensi', {
         method: 'POST',

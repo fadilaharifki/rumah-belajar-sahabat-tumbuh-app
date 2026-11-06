@@ -25,6 +25,7 @@ export const ALL_CRUD_PERMISSIONS: PermissionItem[] = [
   { key: 'presensi:update', label: 'Update (Mengedit Status Presensi)', group: 'Presensi & Check-In' },
   { key: 'presensi:approve', label: 'Approve (Menyetujui & Memvalidasi Laporan Evaluasi)', group: 'Presensi & Check-In' },
   { key: 'presensi:delete', label: 'Delete (Menghapus Data Presensi)', group: 'Presensi & Check-In' },
+  { key: 'presensi:bypass_schedule', label: 'Bypass (Bypass Jadwal & Bebas Waktu Check-In)', group: 'Presensi & Check-In' },
 
   // Jadwal Ngajar
   { key: 'jadwal:read', label: 'Read (Melihat Jadwal Ngajar)', group: 'Jadwal Ngajar & Sesi' },

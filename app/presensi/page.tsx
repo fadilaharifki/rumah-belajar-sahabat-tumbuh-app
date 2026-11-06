@@ -84,7 +84,10 @@ export default function PresensiPage() {
   const [isCheckInOpen, setIsCheckInOpen] = useState(false);
   const [ciTeacherId, setCiTeacherId] = useState('');
   const [ciStudentId, setCiStudentId] = useState('');
+  const [ciSessionDate, setCiSessionDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [ciCheckInTime, setCiCheckInTime] = useState(() => new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }));
+
+  const canBypassSchedule = can('bypass_schedule', 'presensi');
 
   const effectiveTeacherId = useMemo(() => {
     if (user?.role === 'teacher') {
@@ -95,20 +98,24 @@ export default function PresensiPage() {
 
   // Indonesian Day of Week & Date in WIB
   const DAYS_OF_WEEK_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
-  const todayDateObj = useMemo(() => new Date(), [isCheckInOpen]);
-  const todayDayName = DAYS_OF_WEEK_ID[todayDateObj.getDay()];
+  const sessionDateObj = useMemo(() => {
+    if (!ciSessionDate) return new Date();
+    const [y, m, d] = ciSessionDate.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }, [ciSessionDate]);
+  const currentDayName = DAYS_OF_WEEK_ID[sessionDateObj.getDay()];
 
-  // Set of student IDs scheduled TODAY with effective teacher
+  // Set of student IDs scheduled on selected date with effective teacher
   const studentsWithTodaySchedule = useMemo(() => {
     if (!effectiveTeacherId) return new Set<string>();
     const set = new Set<string>();
     allSchedules.forEach((sch) => {
-      if (sch.teacher_id === effectiveTeacherId && sch.day_of_week === todayDayName && sch.status !== 'Nonaktif') {
+      if (sch.teacher_id === effectiveTeacherId && sch.day_of_week === currentDayName && sch.status !== 'Nonaktif') {
         set.add(sch.student_id);
       }
     });
     return set;
-  }, [allSchedules, effectiveTeacherId, todayDayName]);
+  }, [allSchedules, effectiveTeacherId, currentDayName]);
 
   const teacherOptions = useMemo(() => {
     return teachers.map((t) => ({
@@ -124,17 +131,17 @@ export default function PresensiPage() {
       .map((st) => {
         const hasTodaySch = studentsWithTodaySchedule.has(st.id);
         const todaySch = allSchedules.find(
-          (s) => s.student_id === st.id && s.teacher_id === effectiveTeacherId && s.day_of_week === todayDayName && s.status !== 'Nonaktif'
+          (s) => s.student_id === st.id && s.teacher_id === effectiveTeacherId && s.day_of_week === currentDayName && s.status !== 'Nonaktif'
         );
 
         return {
           value: st.id,
           label: hasTodaySch
-            ? `${st.name} ⭐ (Hari Ini: ${todaySch?.start_time || '14:00'} - ${todaySch?.end_time || '15:00'})`
+            ? `${st.name} ⭐ (${currentDayName}: ${todaySch?.start_time || '14:00'} - ${todaySch?.end_time || '15:00'})`
             : st.name,
           subLabel: hasTodaySch
-            ? `Kelas: ${st.grade} • Terjadwal Hari Ini (${todaySch?.room || 'Ruang Kelas'})`
-            : `Kelas: ${st.grade} • Tidak ada jadwal hari ini`,
+            ? `Kelas: ${st.grade} • Terjadwal ${currentDayName} (${todaySch?.room || 'Ruang Kelas'})`
+            : `Kelas: ${st.grade} • Tidak ada jadwal ${currentDayName}`,
           hasTodaySch
         };
       })
@@ -143,15 +150,15 @@ export default function PresensiPage() {
         if (!a.hasTodaySch && b.hasTodaySch) return 1;
         return a.label.localeCompare(b.label);
       });
-  }, [students, studentsWithTodaySchedule, allSchedules, effectiveTeacherId, todayDayName]);
+  }, [students, studentsWithTodaySchedule, allSchedules, effectiveTeacherId, currentDayName]);
 
   // Selected Student Schedule Validation
   const selectedStudentScheduleToday = useMemo(() => {
     if (!ciStudentId || !effectiveTeacherId) return null;
     return allSchedules.find(
-      (s) => s.student_id === ciStudentId && s.teacher_id === effectiveTeacherId && s.day_of_week === todayDayName && s.status !== 'Nonaktif'
+      (s) => s.student_id === ciStudentId && s.teacher_id === effectiveTeacherId && s.day_of_week === currentDayName && s.status !== 'Nonaktif'
     ) || null;
-  }, [ciStudentId, effectiveTeacherId, allSchedules, todayDayName]);
+  }, [ciStudentId, effectiveTeacherId, allSchedules, currentDayName]);
 
   const selectedStudentOtherSchedules = useMemo(() => {
     if (!ciStudentId) return [];
@@ -287,6 +294,7 @@ export default function PresensiPage() {
   }, [activeTab, mobilePendingApprovalList, mobileRevisionList, mobileValidList, mobileInvalidList, mobileNeedReportList, mobilePresensiList]);
 
   const handleOpenCheckInModal = () => {
+    setCiSessionDate(format(new Date(), 'yyyy-MM-dd'));
     setCiCheckInTime(new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }));
     setIsCheckInOpen(true);
   };
@@ -301,20 +309,21 @@ export default function PresensiPage() {
       return;
     }
 
-    if (!selectedStudentScheduleToday) {
-      toast.error('Check-In ditolak! Sesi ini tidak sesuai dengan jadwal belajar siswa hari ini.');
+    if (!selectedStudentScheduleToday && !canBypassSchedule) {
+      toast.error('Check-In ditolak! Sesi ini tidak sesuai dengan jadwal belajar siswa.');
       return;
     }
 
-    const todayDateWib = format(new Date(), 'yyyy-MM-dd');
+    const sessionDateWib = ciSessionDate || format(new Date(), 'yyyy-MM-dd');
     const nowTimeWib = ciCheckInTime || new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' });
 
     await checkInMutation.mutateAsync({
       teacher_id: tId,
       student_id: sId,
-      schedule_id: selectedStudentScheduleToday.id,
-      date: todayDateWib,
-      check_in: nowTimeWib
+      schedule_id: selectedStudentScheduleToday?.id || null,
+      date: sessionDateWib,
+      check_in: nowTimeWib,
+      bypass_schedule: Boolean(canBypassSchedule && !selectedStudentScheduleToday)
     });
 
     setCiTeacherId('');
@@ -525,18 +534,46 @@ export default function PresensiPage() {
         onClose={() => setIsCheckInOpen(false)}
         title="Check-In Sesi Mengajar"
         icon={CheckCircle2}
-        maxWidth="md"
+        maxWidth="lg"
       >
         <form onSubmit={handle1ClickCheckIn} className="space-y-4">
-          {/* Info Hari & Tanggal Sesi Belajar (WIB) */}
-          <div className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-slate-50 border border-slate-200/90 text-xs">
-            <div className="flex items-center gap-1.5 font-bold text-slate-700">
-              <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Hari & Tanggal Sesi:</span>
+          {/* Container Tanggal Sesi Belajar (WIB) */}
+          <div className="bg-slate-50/90 border border-slate-200/80 p-3.5 rounded-2xl space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <Calendar className="w-3.5 h-3.5" />
+                </div>
+                <Label required className="text-xs font-extrabold text-slate-800">
+                  Hari & Tanggal Sesi (WIB):
+                </Label>
+              </div>
+
+              {canBypassSchedule && (
+                <button
+                  type="button"
+                  onClick={() => setCiSessionDate(format(new Date(), 'yyyy-MM-dd'))}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-extrabold text-[11px] shadow-2xs transition cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-300" /> Hari Ini
+                </button>
+              )}
             </div>
-            <span className="font-bold text-emerald-800 font-mono">
-              {todayDayName}, {format(todayDateObj, 'dd MMMM yyyy')} (WIB)
-            </span>
+
+            {canBypassSchedule ? (
+              <DatePicker
+                mode="date"
+                value={ciSessionDate}
+                onChange={(d) => setCiSessionDate(format(d, 'yyyy-MM-dd'))}
+                placeholder="Pilih Tanggal Sesi"
+                align="left"
+                className="w-full"
+              />
+            ) : (
+              <div className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-emerald-900 font-mono shadow-2xs">
+                {currentDayName}, {format(sessionDateObj, 'dd MMMM yyyy')} (WIB)
+              </div>
+            )}
           </div>
 
           <div className={`grid grid-cols-1 ${user?.role !== 'teacher' ? 'sm:grid-cols-2' : ''} gap-3`}>
@@ -577,11 +614,31 @@ export default function PresensiPage() {
                     <span>Jadwal Sesuai & Terverifikasi:</span>
                   </div>
                   <p className="text-[11px] leading-relaxed">
-                    Siswa terdaftar pada hari <strong>{todayDayName}</strong> pukul{' '}
+                    Siswa terdaftar pada hari <strong>{currentDayName}</strong> pukul{' '}
                     <strong className="font-mono text-emerald-950">
                       {selectedStudentScheduleToday.start_time} - {selectedStudentScheduleToday.end_time} WIB
                     </strong>{' '}
                     di <strong>{selectedStudentScheduleToday.room || 'Ruang Kelas'}</strong>.
+                  </p>
+                </div>
+              ) : canBypassSchedule ? (
+                <div className="bg-amber-50 border border-amber-300 p-3 rounded-2xl text-xs text-amber-900 space-y-1.5 shadow-2xs">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Di Luar Jadwal Rutin Siswa (Mode Khusus / Bypass)</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-amber-900">
+                    Siswa tidak terdaftar di jadwal rutin hari <strong>{currentDayName}</strong> bersama guru ini.{' '}
+                    {selectedStudentOtherSchedules.length > 0 ? (
+                      <>
+                        Jadwal terdaftar siswa: <strong>{selectedStudentOtherSchedules.map((s) => `${s.day_of_week} (${s.start_time}-${s.end_time})`).join(', ')}</strong>.
+                      </>
+                    ) : (
+                      'Siswa belum memiliki jadwal rutin.'
+                    )}
+                  </p>
+                  <p className="text-[11px] font-semibold text-amber-800 flex items-center gap-1">
+                    ✓ Izin RBAC aktif: Anda dapat mengonfirmasi sesi ini sebagai Sesi Tambahan / Pengganti.
                   </p>
                 </div>
               ) : (
@@ -593,18 +650,18 @@ export default function PresensiPage() {
                   <p className="text-[11px] leading-relaxed text-rose-800">
                     {selectedStudentOtherSchedules.length === 0 ? (
                       'Siswa ini belum memiliki jadwal bimbingan belajar aktif di sistem. Silakan daftarkan jadwal di menu Jadwal Ngajar terlebih dahulu.'
-                    ) : selectedStudentOtherSchedules.some((s) => s.day_of_week === todayDayName) ? (
+                    ) : selectedStudentOtherSchedules.some((s) => s.day_of_week === currentDayName) ? (
                       <>
-                        Pada hari <strong>{todayDayName}</strong>, siswa ini dijadwalkan belajar bersama{' '}
+                        Pada hari <strong>{currentDayName}</strong>, siswa ini dijadwalkan belajar bersama{' '}
                         <strong>
-                          {selectedStudentOtherSchedules.find((s) => s.day_of_week === todayDayName)?.teacher_name || 'guru lain'}
+                          {selectedStudentOtherSchedules.find((s) => s.day_of_week === currentDayName)?.teacher_name || 'guru lain'}
                         </strong>{' '}
-                        (pukul {selectedStudentOtherSchedules.find((s) => s.day_of_week === todayDayName)?.start_time} -{' '}
-                        {selectedStudentOtherSchedules.find((s) => s.day_of_week === todayDayName)?.end_time} WIB).
+                        (pukul {selectedStudentOtherSchedules.find((s) => s.day_of_week === currentDayName)?.start_time} -{' '}
+                        {selectedStudentOtherSchedules.find((s) => s.day_of_week === currentDayName)?.end_time} WIB).
                       </>
                     ) : (
                       <>
-                        Siswa tidak memiliki jadwal bimbingan pada hari <strong>{todayDayName}</strong>. Jadwal belajar siswa terdaftar:{' '}
+                        Siswa tidak memiliki jadwal bimbingan pada hari <strong>{currentDayName}</strong>. Jadwal belajar siswa terdaftar:{' '}
                         <strong>
                           {selectedStudentOtherSchedules
                             .map((s) => `${s.day_of_week} (${s.start_time}-${s.end_time})`)
@@ -646,7 +703,7 @@ export default function PresensiPage() {
             />
 
             <p className="text-[10px] text-slate-500 font-medium leading-normal">
-              * Default terisi jam sekarang. Ketuk <strong className="text-emerald-700 font-bold">seluruh kotak</strong> untuk memilih jam, atau tombol <strong className="text-emerald-700 font-bold">"Atur Jam Sekarang"</strong>.
+              * Default terisi jam sekarang.
             </p>
           </div>
 
@@ -655,31 +712,35 @@ export default function PresensiPage() {
               Batal
             </Button>
             <Button
-              variant={!selectedStudentScheduleToday ? 'outline' : 'primary'}
+              variant={!selectedStudentScheduleToday && !canBypassSchedule ? 'outline' : 'primary'}
               size="sm"
               type="submit"
-              disabled={checkInMutation.isPending || !ciStudentId || !selectedStudentScheduleToday}
-              className={`h-9 px-5 text-xs font-bold rounded-xl shadow-md ${
-                !selectedStudentScheduleToday
-                  ? 'opacity-60 cursor-not-allowed bg-rose-50 text-rose-700 border-rose-200'
+              disabled={checkInMutation.isPending || !ciStudentId || (!selectedStudentScheduleToday && !canBypassSchedule)}
+              className={`h-9 px-5 text-xs font-bold rounded-xl shadow-md ${!selectedStudentScheduleToday && !canBypassSchedule
+                ? 'opacity-60 cursor-not-allowed bg-rose-50 text-rose-700 border-rose-200'
+                : !selectedStudentScheduleToday && canBypassSchedule
+                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
                   : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-              }`}
+                }`}
             >
               {checkInMutation.isPending
                 ? 'Menyimpan...'
                 : !ciStudentId
-                ? 'Pilih Siswa Terlebih Dahulu'
-                : !selectedStudentScheduleToday
-                ? 'Jadwal Siswa Tidak Sesuai'
-                : 'Konfirmasi Check-In'}
+                  ? 'Pilih Siswa Terlebih Dahulu'
+                  : !selectedStudentScheduleToday && !canBypassSchedule
+                    ? 'Jadwal Siswa Tidak Sesuai'
+                    : !selectedStudentScheduleToday && canBypassSchedule
+                      ? 'Konfirmasi Check-In (Sesi Khusus)'
+                      : 'Konfirmasi Check-In'}
             </Button>
           </div>
         </form>
-      </Modal>
+      </Modal >
 
       {/* 2. REUSABLE MODAL / BOTTOM SHEET: ISI LAPORAN BELAJAR */}
-      <Modal
-        isOpen={!!logTargetPresensi}
+      < Modal
+        isOpen={!!logTargetPresensi
+        }
         onClose={() => setLogTargetPresensi(null)}
         title={logTargetPresensi?.status === 'NeedRevision' || (logTargetPresensi?.status === 'Invalid' && logTargetPresensi?.approval_notes) ? "✏️ Revisi Laporan Belajar Siswa" : "Isi Laporan Belajar Siswa"}
         icon={FileText}
@@ -785,10 +846,10 @@ export default function PresensiPage() {
             </div>
           );
         })()}
-      </Modal>
+      </Modal >
 
       {/* 3. REUSABLE MODAL / BOTTOM SHEET: VALIDASI MANUAL ADMIN */}
-      <Modal
+      < Modal
         isOpen={!!manualVerifyTarget}
         onClose={() => setManualVerifyTarget(null)}
         title="Validasi Manual Admin"
@@ -811,10 +872,10 @@ export default function PresensiPage() {
             </div>
           </div>
         )}
-      </Modal>
+      </Modal >
 
       {/* 4. REUSABLE MODAL / BOTTOM SHEET: KONFIRMASI HAPUS */}
-      <Modal
+      < Modal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         title="Konfirmasi Hapus"
@@ -833,10 +894,10 @@ export default function PresensiPage() {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Modal >
 
       {/* 5. MODAL DETAIL LAPORAN SESI BELAJAR */}
-      <Modal
+      < Modal
         isOpen={Boolean(viewDetailLogItem)}
         onClose={() => setViewDetailLogItem(null)}
         title="Detail Laporan Sesi Pembelajaran"
@@ -1023,10 +1084,10 @@ export default function PresensiPage() {
             </div>
           );
         })()}
-      </Modal>
+      </Modal >
 
       {/* 6. MODAL TOLAK LAPORAN EVALUASI */}
-      <Modal
+      < Modal
         isOpen={Boolean(rejectModalTarget)}
         onClose={() => setRejectModalTarget(null)}
         title="Tolak Laporan Evaluasi (Tidak Valid)"
@@ -1063,69 +1124,334 @@ export default function PresensiPage() {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Modal >
 
 
 
-      {isLoading ? (
-        <SkeletonTable rows={4} />
-      ) : (
-        <>
-          {/* VERSION 1: WEB / DESKTOP VIEW (TABLE FORMAT) - Visible on md screens (>=768px) */}
-          <Card className="hidden md:block p-0 overflow-hidden bg-white shadow-sm border border-slate-200 rounded-2xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs font-medium">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-700 font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-200">
-                    <th className="px-3.5 py-2.5">Tanggal & Jam</th>
-                    <th className="px-3.5 py-2.5">Pengajar</th>
-                    <th className="px-3.5 py-2.5">Siswa</th>
-                    <th className="px-3.5 py-2.5">Jurnal & Laporan</th>
-                    <th className="px-3.5 py-2.5 text-center">Status Sesi</th>
-                    <th className="px-3.5 py-2.5 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {desktopDisplayList.length > 0 ? (
-                    desktopDisplayList.map((item) => {
+      {
+        isLoading ? (
+          <SkeletonTable rows={4} />
+        ) : (
+          <>
+            {/* VERSION 1: WEB / DESKTOP VIEW (TABLE FORMAT) - Visible on md screens (>=768px) */}
+            < Card className="hidden md:block p-0 overflow-hidden bg-white shadow-sm border border-slate-200 rounded-2xl" >
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs font-medium">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-700 font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-200">
+                      <th className="px-3.5 py-2.5">Tanggal & Jam</th>
+                      <th className="px-3.5 py-2.5">Pengajar</th>
+                      <th className="px-3.5 py-2.5">Siswa</th>
+                      <th className="px-3.5 py-2.5">Jurnal & Laporan</th>
+                      <th className="px-3.5 py-2.5 text-center">Status Sesi</th>
+                      <th className="px-3.5 py-2.5 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {desktopDisplayList.length > 0 ? (
+                      desktopDisplayList.map((item) => {
+                        const isValid = item.status === 'Valid' || item.status === 'ManualVerified';
+                        return (
+                          <tr key={item.id} className="hover:bg-emerald-50/20 transition">
+                            <td className="px-3.5 py-2.5 font-mono">
+                              <div className="font-bold text-slate-900">{item.date}</div>
+                              <div className="text-[11px] text-slate-500 font-medium">{item.check_in} WIB ({item.duration_minutes || 60}m)</div>
+                            </td>
+                            <td className="px-3.5 py-2.5 max-w-[150px]">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Avatar src={item.teacher_photo} name={item.teacher_name} size="sm" className="shrink-0" />
+                                <span className="font-bold text-slate-900 truncate" title={item.teacher_name}>{item.teacher_name}</span>
+                              </div>
+                            </td>
+                            <td className="px-3.5 py-2.5 max-w-[150px]">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Avatar src={item.student_avatar} name={item.student_name} size="sm" className="shrink-0" />
+                                <div className="min-w-0">
+                                  <div className="font-bold text-slate-900 truncate" title={item.student_name}>{item.student_name}</div>
+                                  <span className="text-[10px] text-amber-800 font-bold block truncate">{item.student_grade}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-3.5 py-2.5 max-w-xs">
+                              {item.session_log ? (
+                                <div
+                                  onClick={() => setViewDetailLogItem(item)}
+                                  className="space-y-0.5 cursor-pointer hover:bg-emerald-50/50 p-1.5 rounded-xl transition border border-transparent hover:border-emerald-200"
+                                  title="Klik untuk lihat detail laporan"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-bold text-[9px] bg-emerald-100 text-emerald-900">
+                                      <Hash className="w-2.5 h-2.5" /> ke-{item.session_log.session_number || 1}
+                                    </span>
+                                    <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-0.5">
+                                      <Eye className="w-3 h-3" /> Detail
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1 text-xs pt-0.5">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <BookOpen className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                                      <p className="text-slate-800 font-medium line-clamp-1 truncate text-xs">
+                                        {getPlainTextSnippet(item.session_log.activities) || 'Belum ada materi'}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400 shrink-0" />
+                                      <p className="text-emerald-950 font-medium italic line-clamp-1 truncate text-[11px]">
+                                        {getPlainTextSnippet(item.session_log.results_recommendations) || 'Belum ada evaluasi'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => handleOpenLogModal(item)}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer ${item.status === 'NeedRevision'
+                                    ? 'bg-orange-100 text-orange-900 hover:bg-orange-200 border border-orange-300'
+                                    : item.status === 'Invalid'
+                                      ? 'bg-rose-100 text-rose-900 hover:bg-rose-200 border border-rose-300'
+                                      : 'bg-amber-100 text-amber-900 hover:bg-amber-200'
+                                    }`}
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  <span>{item.status === 'NeedRevision' ? '✏️ Revisi Laporan' : item.status === 'Invalid' ? 'Tolak (Invalid)' : '+ Isi Laporan'}</span>
+                                </button>
+                              )}
+                            </td>
+                            <td className="px-3.5 py-2.5 text-center whitespace-nowrap">
+                              {item.status === 'Valid' ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  <span>Valid</span>
+                                </span>
+                              ) : item.status === 'ManualVerified' ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
+                                  <ShieldCheck className="w-3 h-3 text-blue-600" />
+                                  <span>Manual</span>
+                                </span>
+                              ) : item.status === 'PendingApproval' ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                  <Clock className="w-3 h-3 text-amber-700" />
+                                  <span>Menunggu Approval</span>
+                                </span>
+                              ) : item.status === 'NeedRevision' ? (
+                                <div className="inline-flex flex-col items-center gap-1">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-900 border border-orange-300">
+                                    <AlertCircle className="w-3 h-3 text-orange-600" />
+                                    <span>Perlu Revisi</span>
+                                  </span>
+                                  {item.approval_notes && (
+                                    <div className="text-[10px] text-orange-900 bg-orange-50 border border-orange-200 px-2 py-1 rounded-lg text-left max-w-[210px] whitespace-normal leading-tight shadow-2xs">
+                                      <strong className="block text-orange-950 font-bold">Catatan Revisi:</strong>
+                                      <span className="line-clamp-2">{item.approval_notes}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : item.status === 'Invalid' ? (
+                                <div className="inline-flex flex-col items-center gap-1">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
+                                    <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                    <span>Tidak Valid</span>
+                                  </span>
+                                  {item.approval_notes && (
+                                    <div className="text-[10px] text-rose-800 bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg text-left max-w-[210px] whitespace-normal leading-tight shadow-2xs">
+                                      <strong className="block text-rose-900 font-bold">Alasan Penolakan:</strong>
+                                      <span className="line-clamp-2">{item.approval_notes}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
+                                  <Clock className="w-3 h-3 text-slate-500" />
+                                  <span>Check-In</span>
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3.5 py-2.5 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1">
+                                {/* Quick Approver Actions */}
+                                {can('approve', 'presensi') && (
+                                  <>
+                                    {user?.teacher_id && user.teacher_id === item.teacher_id ? (
+                                      <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded" title="Guru tidak bisa meng-approve laporannya sendiri">
+                                        Perlu ACC Pemilik
+                                      </span>
+                                    ) : (
+                                      <>
+                                        {item.status !== 'Valid' && item.session_log && (
+                                          <button
+                                            onClick={() => handleApprove(item)}
+                                            disabled={approvalMutation.isPending}
+                                            className="p-1 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer shadow-xs transition"
+                                            title="Setujui Laporan Evaluasi (Valid)"
+                                          >
+                                            <Check className="w-3.5 h-3.5" /> ACC
+                                          </button>
+                                        )}
+                                        {item.status !== 'Invalid' && item.session_log && (
+                                          <button
+                                            onClick={() => {
+                                              setRejectModalTarget(item);
+                                              setRejectionReason(item.approval_notes || '');
+                                            }}
+                                            className="p-1 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition"
+                                            title="Tolak Laporan Evaluasi (Tidak Valid)"
+                                          >
+                                            <X className="w-3.5 h-3.5" /> Tolak
+                                          </button>
+                                        )}
+                                      </>
+                                    )}
+                                  </>
+                                )}
+
+                                {item.session_log && (
+                                  <button
+                                    onClick={() => setViewDetailLogItem(item)}
+                                    className="p-1 text-emerald-700 hover:bg-emerald-50 rounded-lg cursor-pointer"
+                                    title="Lihat Detail Laporan"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {!isValid && can('update', 'presensi') && !can('approve', 'presensi') && (
+                                  <button
+                                    onClick={() => setManualVerifyTarget(item)}
+                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer"
+                                    title="Validasi Manual Admin"
+                                  >
+                                    <ShieldCheck className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleOpenLogModal(item)}
+                                  className="p-1 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                                  title="Edit Laporan"
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                </button>
+                                {can('delete', 'presensi') && (
+                                  <button
+                                    onClick={() => setDeleteTarget(item)}
+                                    className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                                    title="Hapus Presensi"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="text-center py-12 text-slate-400">
+                          {activeTab === 'pending_approval'
+                            ? `Tidak ada sesi yang menunggu approval di periode ${monthLabel}. 🎉`
+                            : activeTab === 'need_report'
+                              ? `Tidak ada sesi yang menunggu laporan di periode ${monthLabel}. 🎉`
+                              : activeTab === 'valid'
+                                ? `Belum ada sesi valid di periode ${monthLabel}.`
+                                : activeTab === 'invalid'
+                                  ? `Tidak ada laporan yang ditolak di periode ${monthLabel}.`
+                                  : `Belum ada rekaman presensi pada periode ${monthLabel}.`}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card >
+
+            {/* VERSION 2: MOBILE VIEW (COMPACT CARDS WITH TANSTACK QUERY INFINITE SCROLL) - Visible on small screens (<768px) */}
+            < div className="block md:hidden space-y-3" >
+              {
+                mobileDisplayList.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-3">
+                    {mobileDisplayList.map((item) => {
                       const isValid = item.status === 'Valid' || item.status === 'ManualVerified';
+
                       return (
-                        <tr key={item.id} className="hover:bg-emerald-50/20 transition">
-                          <td className="px-3.5 py-2.5 font-mono">
-                            <div className="font-bold text-slate-900">{item.date}</div>
-                            <div className="text-[11px] text-slate-500 font-medium">{item.check_in} WIB ({item.duration_minutes || 60}m)</div>
-                          </td>
-                          <td className="px-3.5 py-2.5 max-w-[150px]">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Avatar src={item.teacher_photo} name={item.teacher_name} size="sm" className="shrink-0" />
-                              <span className="font-bold text-slate-900 truncate" title={item.teacher_name}>{item.teacher_name}</span>
-                            </div>
-                          </td>
-                          <td className="px-3.5 py-2.5 max-w-[150px]">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Avatar src={item.student_avatar} name={item.student_name} size="sm" className="shrink-0" />
-                              <div className="min-w-0">
-                                <div className="font-bold text-slate-900 truncate" title={item.student_name}>{item.student_name}</div>
-                                <span className="text-[10px] text-amber-800 font-bold block truncate">{item.student_grade}</span>
+                        <Card
+                          key={item.id}
+                          className="p-3.5 space-y-2.5 bg-white border border-slate-200 shadow-2xs hover:shadow-xs hover:border-emerald-300 transition relative flex flex-col justify-between rounded-2xl"
+                        >
+                          <div className="space-y-2.5">
+                            {/* Compact Header: Date & Status Badge */}
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2 gap-1.5">
+                              <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-900">
+                                <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span>{item.date}</span>
+                                <span className="text-[10px] text-slate-400 font-normal">• {item.check_in} WIB</span>
+                              </div>
+
+                              <div>
+                                {item.status === 'Valid' ? (
+                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                    <span>Valid</span>
+                                  </span>
+                                ) : item.status === 'ManualVerified' ? (
+                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
+                                    <ShieldCheck className="w-3 h-3 text-blue-600" />
+                                    <span>Manual</span>
+                                  </span>
+                                ) : item.status === 'PendingApproval' ? (
+                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                    <Clock className="w-3 h-3 text-amber-700" />
+                                    <span>Menunggu Approval</span>
+                                  </span>
+                                ) : item.status === 'Invalid' ? (
+                                  <div className="flex flex-col items-end gap-1">
+                                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
+                                      <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                      <span>Tidak Valid</span>
+                                    </span>
+                                    {item.approval_notes && (
+                                      <span className="text-[10px] text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded max-w-[170px] truncate" title={item.approval_notes}>
+                                        Revisi: {item.approval_notes}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
+                                    <Clock className="w-3 h-3 text-slate-500" />
+                                    <span>Check-In</span>
+                                  </span>
+                                )}
                               </div>
                             </div>
-                          </td>
-                          <td className="px-3.5 py-2.5 max-w-xs">
-                            {item.session_log ? (
-                              <div
-                                onClick={() => setViewDetailLogItem(item)}
-                                className="space-y-0.5 cursor-pointer hover:bg-emerald-50/50 p-1.5 rounded-xl transition border border-transparent hover:border-emerald-200"
-                                title="Klik untuk lihat detail laporan"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-bold text-[9px] bg-emerald-100 text-emerald-900">
-                                    <Hash className="w-2.5 h-2.5" /> ke-{item.session_log.session_number || 1}
-                                  </span>
-                                  <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-0.5">
-                                    <Eye className="w-3 h-3" /> Detail
-                                  </span>
+
+                            {/* Compact Profiles: Guru & Siswa */}
+                            <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-slate-50 border border-slate-100 text-[11px]">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Avatar src={item.teacher_photo} name={item.teacher_name} size="sm" className="shrink-0" />
+                                <div className="truncate">
+                                  <span className="text-[9px] font-bold uppercase text-slate-400 block leading-tight">Guru:</span>
+                                  <h4 className="font-bold text-slate-900 truncate leading-tight">{item.teacher_name}</h4>
                                 </div>
-                                <div className="space-y-1 text-xs pt-0.5">
+                              </div>
+
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Avatar src={item.student_avatar} name={item.student_name} size="sm" className="shrink-0" />
+                                <div className="truncate">
+                                  <span className="text-[9px] font-bold uppercase text-slate-400 block leading-tight">Siswa:</span>
+                                  <h4 className="font-bold text-slate-900 truncate leading-tight">{item.student_name}</h4>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Session Log Progress Details */}
+                            {item.session_log ? (
+                              <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200/90 space-y-2 text-xs">
+                                <div className="flex items-center justify-between">
+                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg font-extrabold text-[10px] bg-emerald-200 text-emerald-950">
+                                    <Hash className="w-3 h-3 text-emerald-800" /> Sesi ke-{item.session_log.session_number || 1}
+                                  </span>
+                                  <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider">Jurnal</span>
+                                </div>
+
+                                <div className="space-y-1.5 text-xs pt-0.5">
                                   <div className="flex items-center gap-1.5 min-w-0">
                                     <BookOpen className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                                     <p className="text-slate-800 font-medium line-clamp-1 truncate text-xs">
@@ -1134,84 +1460,50 @@ export default function PresensiPage() {
                                   </div>
                                   <div className="flex items-center gap-1.5 min-w-0">
                                     <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400 shrink-0" />
-                                    <p className="text-emerald-950 font-medium italic line-clamp-1 truncate text-[11px]">
+                                    <p className="text-emerald-950 font-medium italic line-clamp-1 truncate text-xs">
                                       {getPlainTextSnippet(item.session_log.results_recommendations) || 'Belum ada evaluasi'}
                                     </p>
                                   </div>
                                 </div>
+
+                                <button
+                                  onClick={() => setViewDetailLogItem(item)}
+                                  className="w-full py-1.5 px-3 rounded-xl text-xs font-bold bg-white hover:bg-emerald-100 text-emerald-950 transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs border border-emerald-300/80 mt-1"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-emerald-700" /> Lihat Detail Laporan
+                                </button>
                               </div>
                             ) : (
-                              <button
-                                onClick={() => handleOpenLogModal(item)}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer ${
-                                  item.status === 'NeedRevision'
-                                    ? 'bg-orange-100 text-orange-900 hover:bg-orange-200 border border-orange-300'
-                                    : item.status === 'Invalid'
-                                    ? 'bg-rose-100 text-rose-900 hover:bg-rose-200 border border-rose-300'
-                                    : 'bg-amber-100 text-amber-900 hover:bg-amber-200'
-                                }`}
-                              >
-                                <Edit3 className="w-3 h-3" />
-                                <span>{item.status === 'NeedRevision' ? '✏️ Revisi Laporan' : item.status === 'Invalid' ? 'Tolak (Invalid)' : '+ Isi Laporan'}</span>
-                              </button>
-                            )}
-                          </td>
-                          <td className="px-3.5 py-2.5 text-center whitespace-nowrap">
-                            {item.status === 'Valid' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                <span>Valid</span>
-                              </span>
-                            ) : item.status === 'ManualVerified' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
-                                <ShieldCheck className="w-3 h-3 text-blue-600" />
-                                <span>Manual</span>
-                              </span>
-                            ) : item.status === 'PendingApproval' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                                <Clock className="w-3 h-3 text-amber-700" />
-                                <span>Menunggu Approval</span>
-                              </span>
-                            ) : item.status === 'NeedRevision' ? (
-                              <div className="inline-flex flex-col items-center gap-1">
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-900 border border-orange-300">
-                                  <AlertCircle className="w-3 h-3 text-orange-600" />
-                                  <span>Perlu Revisi</span>
-                                </span>
+                              <div className={`p-2.5 rounded-xl border text-[11px] text-center space-y-1.5 ${item.status === 'Invalid' ? 'bg-rose-50/80 border-rose-200' : 'bg-amber-50/80 border-amber-200'
+                                }`}>
+                                <p className={`font-semibold text-[10px] ${item.status === 'Invalid' ? 'text-rose-900 font-bold' : 'text-amber-900'}`}>
+                                  {item.status === 'Invalid' ? '⚠️ Laporan Ditolak / Butuh Revisi' : '⚠️ Laporan belum diisi'}
+                                </p>
                                 {item.approval_notes && (
-                                  <div className="text-[10px] text-orange-900 bg-orange-50 border border-orange-200 px-2 py-1 rounded-lg text-left max-w-[210px] whitespace-normal leading-tight shadow-2xs">
-                                    <strong className="block text-orange-950 font-bold">Catatan Revisi:</strong>
-                                    <span className="line-clamp-2">{item.approval_notes}</span>
-                                  </div>
+                                  <p className="text-[10px] text-rose-800 bg-white/80 p-1.5 rounded-lg border border-rose-200 text-left leading-snug">
+                                    <strong>Catatan Atasan:</strong> {item.approval_notes}
+                                  </p>
                                 )}
+                                <button
+                                  onClick={() => handleOpenLogModal(item)}
+                                  className={`w-full py-1 px-2 rounded-lg text-[10px] font-bold transition cursor-pointer flex items-center justify-center gap-1 ${item.status === 'Invalid'
+                                    ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                                    : 'bg-amber-500 hover:bg-amber-600 text-slate-950'
+                                    }`}
+                                >
+                                  <Edit3 className="w-3 h-3" /> {item.status === 'Invalid' ? '✏️ Revisi Laporan Belajar' : '+ Isi Laporan Belajar'}
+                                </button>
                               </div>
-                            ) : item.status === 'Invalid' ? (
-                              <div className="inline-flex flex-col items-center gap-1">
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
-                                  <AlertTriangle className="w-3 h-3 text-rose-600" />
-                                  <span>Tidak Valid</span>
-                                </span>
-                                {item.approval_notes && (
-                                  <div className="text-[10px] text-rose-800 bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg text-left max-w-[210px] whitespace-normal leading-tight shadow-2xs">
-                                    <strong className="block text-rose-900 font-bold">Alasan Penolakan:</strong>
-                                    <span className="line-clamp-2">{item.approval_notes}</span>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
-                                <Clock className="w-3 h-3 text-slate-500" />
-                                <span>Check-In</span>
-                              </span>
                             )}
-                          </td>
-                          <td className="px-3.5 py-2.5 text-right whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-1">
-                              {/* Quick Approver Actions */}
+                          </div>
+
+                          {/* Card Actions Footer */}
+                          <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1 text-[11px]">
+                            <div className="flex items-center gap-1">
                               {can('approve', 'presensi') && (
                                 <>
                                   {user?.teacher_id && user.teacher_id === item.teacher_id ? (
-                                    <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded" title="Guru tidak bisa meng-approve laporannya sendiri">
+                                    <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
                                       Perlu ACC Pemilik
                                     </span>
                                   ) : (
@@ -1220,10 +1512,9 @@ export default function PresensiPage() {
                                         <button
                                           onClick={() => handleApprove(item)}
                                           disabled={approvalMutation.isPending}
-                                          className="p-1 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer shadow-xs transition"
-                                          title="Setujui Laporan Evaluasi (Valid)"
+                                          className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-0.5 cursor-pointer shadow-xs"
                                         >
-                                          <Check className="w-3.5 h-3.5" /> ACC
+                                          <Check className="w-3 h-3" /> ACC
                                         </button>
                                       )}
                                       {item.status !== 'Invalid' && item.session_log && (
@@ -1232,317 +1523,89 @@ export default function PresensiPage() {
                                             setRejectModalTarget(item);
                                             setRejectionReason(item.approval_notes || '');
                                           }}
-                                          className="p-1 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition"
-                                          title="Tolak Laporan Evaluasi (Tidak Valid)"
+                                          className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 transition flex items-center gap-0.5 cursor-pointer"
                                         >
-                                          <X className="w-3.5 h-3.5" /> Tolak
+                                          <X className="w-3 h-3" /> Tolak
                                         </button>
                                       )}
                                     </>
                                   )}
                                 </>
                               )}
-
-                              {item.session_log && (
-                                <button
-                                  onClick={() => setViewDetailLogItem(item)}
-                                  className="p-1 text-emerald-700 hover:bg-emerald-50 rounded-lg cursor-pointer"
-                                  title="Lihat Detail Laporan"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                              )}
                               {!isValid && can('update', 'presensi') && !can('approve', 'presensi') && (
                                 <button
                                   onClick={() => setManualVerifyTarget(item)}
-                                  className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer"
+                                  className="px-2 py-0.5 rounded-lg text-[10px] font-bold border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition cursor-pointer flex items-center gap-1"
                                   title="Validasi Manual Admin"
                                 >
-                                  <ShieldCheck className="w-4 h-4" />
+                                  <ShieldCheck className="w-3 h-3 text-blue-600" /> Manual
                                 </button>
                               )}
+                            </div>
+
+                            <div className="flex items-center gap-1">
                               <button
                                 onClick={() => handleOpenLogModal(item)}
-                                className="p-1 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
-                                title="Edit Laporan"
+                                className="p-1 px-2 text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer flex items-center gap-1 font-semibold text-[10px]"
+                                title="Edit Laporan Sesi"
                               >
-                                <Edit3 className="w-4 h-4" />
+                                <Edit3 className="w-3 h-3 text-slate-500" /> Edit
                               </button>
+
                               {can('delete', 'presensi') && (
                                 <button
                                   onClick={() => setDeleteTarget(item)}
-                                  className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                                  className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                                   title="Hapus Presensi"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Trash2 className="w-3 h-3 text-rose-500" />
                                 </button>
                               )}
                             </div>
-                          </td>
-                        </tr>
+                          </div>
+                        </Card>
                       );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="text-center py-12 text-slate-400">
-                        {activeTab === 'pending_approval'
-                          ? `Tidak ada sesi yang menunggu approval di periode ${monthLabel}. 🎉`
-                          : activeTab === 'need_report'
+                    })}
+                  </div>
+                ) : (
+                  <Card className="p-8 text-center text-slate-400 space-y-1.5">
+                    <Calendar className="w-7 h-7 mx-auto text-slate-300" />
+                    <p className="font-semibold text-xs text-slate-600">
+                      {activeTab === 'pending_approval'
+                        ? `Tidak ada sesi yang menunggu approval di periode ${monthLabel}. 🎉`
+                        : activeTab === 'need_report'
                           ? `Tidak ada sesi yang menunggu laporan di periode ${monthLabel}. 🎉`
                           : activeTab === 'valid'
-                          ? `Belum ada sesi valid di periode ${monthLabel}.`
-                          : activeTab === 'invalid'
-                          ? `Tidak ada laporan yang ditolak di periode ${monthLabel}.`
-                          : `Belum ada rekaman presensi pada periode ${monthLabel}.`}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+                            ? `Belum ada sesi valid di periode ${monthLabel}.`
+                            : activeTab === 'invalid'
+                              ? `Tidak ada laporan yang ditolak di periode ${monthLabel}.`
+                              : `Belum ada rekaman presensi pada periode ${monthLabel}.`}
+                    </p>
+                    <p className="text-[11px] text-slate-400">Gunakan filter Bulan & Tahun untuk melihat periode lainnya.</p>
+                  </Card>
+                )
+              }
 
-          {/* VERSION 2: MOBILE VIEW (COMPACT CARDS WITH TANSTACK QUERY INFINITE SCROLL) - Visible on small screens (<768px) */}
-          <div className="block md:hidden space-y-3">
-            {mobileDisplayList.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3">
-                {mobileDisplayList.map((item) => {
-                  const isValid = item.status === 'Valid' || item.status === 'ManualVerified';
-
-                  return (
-                    <Card
-                      key={item.id}
-                      className="p-3.5 space-y-2.5 bg-white border border-slate-200 shadow-2xs hover:shadow-xs hover:border-emerald-300 transition relative flex flex-col justify-between rounded-2xl"
+              {/* Mobile TanStack Query Infinite Scroll Trigger */}
+              {
+                hasNextPage && (
+                  <div className="pt-2 text-center">
+                    <Button
+                      variant="outline"
+                      size="md"
+                      onClick={() => fetchNextPage()}
+                      disabled={isFetchingNextPage}
+                      className="w-full text-xs font-bold py-2.5 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50 shadow-xs justify-center"
                     >
-                      <div className="space-y-2.5">
-                        {/* Compact Header: Date & Status Badge */}
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-2 gap-1.5">
-                          <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-900">
-                            <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <span>{item.date}</span>
-                            <span className="text-[10px] text-slate-400 font-normal">• {item.check_in} WIB</span>
-                          </div>
-
-                          <div>
-                            {item.status === 'Valid' ? (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                <span>Valid</span>
-                              </span>
-                            ) : item.status === 'ManualVerified' ? (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
-                                <ShieldCheck className="w-3 h-3 text-blue-600" />
-                                <span>Manual</span>
-                              </span>
-                            ) : item.status === 'PendingApproval' ? (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                                <Clock className="w-3 h-3 text-amber-700" />
-                                <span>Menunggu Approval</span>
-                              </span>
-                            ) : item.status === 'Invalid' ? (
-                              <div className="flex flex-col items-end gap-1">
-                                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
-                                  <AlertTriangle className="w-3 h-3 text-rose-600" />
-                                  <span>Tidak Valid</span>
-                                </span>
-                                {item.approval_notes && (
-                                  <span className="text-[10px] text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded max-w-[170px] truncate" title={item.approval_notes}>
-                                    Revisi: {item.approval_notes}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
-                                <Clock className="w-3 h-3 text-slate-500" />
-                                <span>Check-In</span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Compact Profiles: Guru & Siswa */}
-                        <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-slate-50 border border-slate-100 text-[11px]">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Avatar src={item.teacher_photo} name={item.teacher_name} size="sm" className="shrink-0" />
-                            <div className="truncate">
-                              <span className="text-[9px] font-bold uppercase text-slate-400 block leading-tight">Guru:</span>
-                              <h4 className="font-bold text-slate-900 truncate leading-tight">{item.teacher_name}</h4>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Avatar src={item.student_avatar} name={item.student_name} size="sm" className="shrink-0" />
-                            <div className="truncate">
-                              <span className="text-[9px] font-bold uppercase text-slate-400 block leading-tight">Siswa:</span>
-                              <h4 className="font-bold text-slate-900 truncate leading-tight">{item.student_name}</h4>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Session Log Progress Details */}
-                        {item.session_log ? (
-                          <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200/90 space-y-2 text-xs">
-                            <div className="flex items-center justify-between">
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg font-extrabold text-[10px] bg-emerald-200 text-emerald-950">
-                                <Hash className="w-3 h-3 text-emerald-800" /> Sesi ke-{item.session_log.session_number || 1}
-                              </span>
-                              <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider">Jurnal</span>
-                            </div>
-
-                            <div className="space-y-1.5 text-xs pt-0.5">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <BookOpen className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                                <p className="text-slate-800 font-medium line-clamp-1 truncate text-xs">
-                                  {getPlainTextSnippet(item.session_log.activities) || 'Belum ada materi'}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400 shrink-0" />
-                                <p className="text-emerald-950 font-medium italic line-clamp-1 truncate text-xs">
-                                  {getPlainTextSnippet(item.session_log.results_recommendations) || 'Belum ada evaluasi'}
-                                </p>
-                              </div>
-                            </div>
-
-                            <button
-                              onClick={() => setViewDetailLogItem(item)}
-                              className="w-full py-1.5 px-3 rounded-xl text-xs font-bold bg-white hover:bg-emerald-100 text-emerald-950 transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs border border-emerald-300/80 mt-1"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-emerald-700" /> Lihat Detail Laporan
-                            </button>
-                          </div>
-                        ) : (
-                          <div className={`p-2.5 rounded-xl border text-[11px] text-center space-y-1.5 ${
-                            item.status === 'Invalid' ? 'bg-rose-50/80 border-rose-200' : 'bg-amber-50/80 border-amber-200'
-                          }`}>
-                            <p className={`font-semibold text-[10px] ${item.status === 'Invalid' ? 'text-rose-900 font-bold' : 'text-amber-900'}`}>
-                              {item.status === 'Invalid' ? '⚠️ Laporan Ditolak / Butuh Revisi' : '⚠️ Laporan belum diisi'}
-                            </p>
-                            {item.approval_notes && (
-                              <p className="text-[10px] text-rose-800 bg-white/80 p-1.5 rounded-lg border border-rose-200 text-left leading-snug">
-                                <strong>Catatan Atasan:</strong> {item.approval_notes}
-                              </p>
-                            )}
-                            <button
-                              onClick={() => handleOpenLogModal(item)}
-                              className={`w-full py-1 px-2 rounded-lg text-[10px] font-bold transition cursor-pointer flex items-center justify-center gap-1 ${
-                                item.status === 'Invalid'
-                                  ? 'bg-rose-600 hover:bg-rose-700 text-white'
-                                  : 'bg-amber-500 hover:bg-amber-600 text-slate-950'
-                              }`}
-                            >
-                              <Edit3 className="w-3 h-3" /> {item.status === 'Invalid' ? '✏️ Revisi Laporan Belajar' : '+ Isi Laporan Belajar'}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Card Actions Footer */}
-                      <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1 text-[11px]">
-                        <div className="flex items-center gap-1">
-                          {can('approve', 'presensi') && (
-                            <>
-                              {user?.teacher_id && user.teacher_id === item.teacher_id ? (
-                                <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                                  Perlu ACC Pemilik
-                                </span>
-                              ) : (
-                                <>
-                                  {item.status !== 'Valid' && item.session_log && (
-                                    <button
-                                      onClick={() => handleApprove(item)}
-                                      disabled={approvalMutation.isPending}
-                                      className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-0.5 cursor-pointer shadow-xs"
-                                    >
-                                      <Check className="w-3 h-3" /> ACC
-                                    </button>
-                                  )}
-                                  {item.status !== 'Invalid' && item.session_log && (
-                                    <button
-                                      onClick={() => {
-                                        setRejectModalTarget(item);
-                                        setRejectionReason(item.approval_notes || '');
-                                      }}
-                                      className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 transition flex items-center gap-0.5 cursor-pointer"
-                                    >
-                                      <X className="w-3 h-3" /> Tolak
-                                    </button>
-                                  )}
-                                </>
-                              )}
-                            </>
-                          )}
-                          {!isValid && can('update', 'presensi') && !can('approve', 'presensi') && (
-                            <button
-                              onClick={() => setManualVerifyTarget(item)}
-                              className="px-2 py-0.5 rounded-lg text-[10px] font-bold border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition cursor-pointer flex items-center gap-1"
-                              title="Validasi Manual Admin"
-                            >
-                              <ShieldCheck className="w-3 h-3 text-blue-600" /> Manual
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleOpenLogModal(item)}
-                            className="p-1 px-2 text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer flex items-center gap-1 font-semibold text-[10px]"
-                            title="Edit Laporan Sesi"
-                          >
-                            <Edit3 className="w-3 h-3 text-slate-500" /> Edit
-                          </button>
-
-                          {can('delete', 'presensi') && (
-                            <button
-                              onClick={() => setDeleteTarget(item)}
-                              className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                              title="Hapus Presensi"
-                            >
-                              <Trash2 className="w-3 h-3 text-rose-500" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            ) : (
-              <Card className="p-8 text-center text-slate-400 space-y-1.5">
-                <Calendar className="w-7 h-7 mx-auto text-slate-300" />
-                <p className="font-semibold text-xs text-slate-600">
-                  {activeTab === 'pending_approval'
-                    ? `Tidak ada sesi yang menunggu approval di periode ${monthLabel}. 🎉`
-                    : activeTab === 'need_report'
-                    ? `Tidak ada sesi yang menunggu laporan di periode ${monthLabel}. 🎉`
-                    : activeTab === 'valid'
-                    ? `Belum ada sesi valid di periode ${monthLabel}.`
-                    : activeTab === 'invalid'
-                    ? `Tidak ada laporan yang ditolak di periode ${monthLabel}.`
-                    : `Belum ada rekaman presensi pada periode ${monthLabel}.`}
-                </p>
-                <p className="text-[11px] text-slate-400">Gunakan filter Bulan & Tahun untuk melihat periode lainnya.</p>
-              </Card>
-            )}
-
-            {/* Mobile TanStack Query Infinite Scroll Trigger */}
-            {hasNextPage && (
-              <div className="pt-2 text-center">
-                <Button
-                  variant="outline"
-                  size="md"
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                  className="w-full text-xs font-bold py-2.5 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50 shadow-xs justify-center"
-                >
-                  <ArrowDown className="w-4 h-4 mr-1 text-emerald-600 animate-bounce" />
-                  {isFetchingNextPage ? 'Memuat Presensi Berikutnya...' : '👇 Muat Lebih Banyak Presensi'}
-                </Button>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
+                      <ArrowDown className="w-4 h-4 mr-1 text-emerald-600 animate-bounce" />
+                      {isFetchingNextPage ? 'Memuat Presensi Berikutnya...' : '👇 Muat Lebih Banyak Presensi'}
+                    </Button>
+                  </div>
+                )
+              }
+            </div >
+          </>
+        )}
+    </div >
   );
 }

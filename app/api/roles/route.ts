@@ -76,9 +76,13 @@ export async function GET() {
     const { data: permsData } = await supabase.from('role_permissions').select('*');
 
     const formatted = rolesData.map((role) => {
-      const activePerms = permsData
+      let activePerms = permsData
         ? permsData.filter((p) => p.role_id === role.id).map((p) => p.permission_key)
         : [];
+      // Guarantee Pemilik / Admin Utama always possesses all registered permissions
+      if (role.id === '11111111-1111-1111-1111-000000000001' || role.name?.toLowerCase().includes('pemilik')) {
+        activePerms = Array.from(new Set([...activePerms, ...ALL_CRUD_PERMISSIONS.map((p) => p.key)]));
+      }
       return {
         id: role.id,
         name: role.name,
